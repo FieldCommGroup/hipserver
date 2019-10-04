@@ -1,10 +1,7 @@
----
-subtitle: Version 0.2
-title: HART-IP Server Developer Guide
----
+![FCG](https://avatars0.githubusercontent.com/u/26013747?s=50&v=4) Fieldcomm Group
+=====================
 
-Overview
-========
+# Overview
 
 A HART-IP Server is composed of two cooperating processes (programs):
 
@@ -80,8 +77,7 @@ We have several Applications either planned, in implementation or ideas:
 
 -   Device Simulator using DD’s to emulate registered devices (idea)
 
-User Operation
-==============
+# User Operation
 
 Requirements:
 
@@ -129,8 +125,7 @@ Will produce a help output for the server.
 Configurable parameters for the server are set as environmental variables. Only
 a setting for the IP port (default 5094) is considered at this time.
 
-Inter-process Communication
-===========================
+# Inter-process Communication
 
 A message consists of:
 
@@ -155,8 +150,7 @@ Two POSIX mqueue structures are used (see \<mqueue.h\>):
 -   RX queue contains messages from the device bound for the host, named:
     **"/APPRSP_queue"**
 
-POSIX Message Queues
---------------------
+## POSIX Message Queues
 
 TX messages are STX message frames.
 
@@ -171,8 +165,7 @@ timeouts as it finds the correct polling address.
 It is the responsibility of the Application to match Transaction IDs between
 requests and responses.
 
-Application Control Messages
-----------------------------
+## Application Control Messages
 
 HART messages sent to long-frame address 0 are control messages from the HART-IP
 server sent to the device Application. The HART command \# field contains the
@@ -186,8 +179,7 @@ these commands as follows:
 | TERM_APP_CMD | 2      | None         | None                                                                                                                            | Return SUCCESS when received, then disconnect from device, close all threads and release all system resources and exit the Application program.                        |
 |              |        |              |                                                                                                                                 |                                                                                                                                                                        |
 
-Example Application Program
-===========================
+# Example Application Program
 
 The Example program demonstrates a simple virtual Application that responds to
 HART messages by copying the request data to the response and replying with
@@ -220,11 +212,9 @@ Repositories are located here:
 
 <https://engineering.repositoryhosting.com/svn/engineering_hip_stub>
 
-Developer Notes
-===============
+# Developer Notes
 
-Orderly startup and Shutdown
-----------------------------
+## Orderly startup and Shutdown
 
 The example applications use a few classes:
 
@@ -300,14 +290,12 @@ Operating multiple hipservers
 
     -   No other communication between two
 
-HART-IP Server Application Components
-=====================================
+# HART-IP Server Application Components
 
 <https://www.lucidchart.com/documents/edit/d0f85da8-450d-4e2f-9886-cb911be2aa6b/0>
 
 ![](media/487950cf5cb86ced4c18157919cc427d.png)
 
-Linked Repository Structure for Application and Server
-======================================================
+# Linked Repository Structure for Application and Server
 
 ![https://documents.lucidchart.com/documents/d0f85da8-450d-4e2f-9886-cb911be2aa6b/pages/Z5ZbzzxxBxT1?a=7887&x=131&y=56&w=1518&h=968&store=1&accept=image%2F\*&auth=LCA%20ac1a2db83adf801318e768dcd556c923c3e51f9d-ts%3D1537466549](media/1240809ada1e6bf98128ffbd68362669.png)

@@ -1,12 +1,13 @@
-hipserver
-=========
+![FCG](https://avatars0.githubusercontent.com/u/26013747?s=50&v=4) Fieldcomm Group
+=====================
+
+# hipserver
 
 Version 3.6
 
 A server component common to HART-IP server applications.
 
-Known Issues
-============
+# Known Issues
 
 Doesn’t pass HART-IP Test System test cases
 
