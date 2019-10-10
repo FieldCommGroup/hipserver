@@ -5,14 +5,21 @@
 
 Version 3.6
 
-A server component common to HART-IP server applications.
+This server component is common to the HART-IP server applications developed by FieldComm Group.  This is the identical software used by the HART Test System and Wireless HART Test System.  New HART-IP server applications produced by FieldComm Group will also use this component.
 
 # Known Issues
 
-Doesn’t pass HART-IP Test System test cases
+It does not pass HART-IP Test System test cases (test specification development is in progress).
 
-Doesn’t catch mal-formed Token-Passing PDU’s,
+It does not catch malformed Token-Passing PDU’s.
 
-Does not support TCP-IP (it does support UDP)
+It supports UDP, but does not support TCP-IP.
 
 Does not implement security (not included in the HART-IP spec)
+
+# Developer Guide
+
+![architecture](media/6cbfeb78d00cef63e4acd001176ad27f.png)
+
+
+

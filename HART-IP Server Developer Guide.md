@@ -9,7 +9,7 @@ A HART-IP Server is composed of two cooperating processes (programs):
 
 -   hip application
 
-![https://documents.lucidchart.com/documents/d0f85da8-450d-4e2f-9886-cb911be2aa6b/pages/tNAzMjvZ5gRz?a=7842&x=-23&y=607&w=1387&h=293&store=1&accept=image%2F\*&auth=LCA%20f80d20fe72c96a8dfb8fd67c41f8a8306187ead4-ts%3D1537466549](media/6cbfeb78d00cef63e4acd001176ad27f.png)
+![architecture](media/6cbfeb78d00cef63e4acd001176ad27f.png)
 
 The interface between the Server process and the application process consists of
 two POSIX message queues. The messages are HART Token-Passing message frames,
