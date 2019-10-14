@@ -1,13 +1,17 @@
 /*************************************************************************************************
+ * Copyright 2019 FieldComm Group, Inc.
  *
- * Workfile: Common2Server.h 
- * 27Mar18 - paul
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *************************************************************************************************
-* The content of this file is the 
- *     Proprietary and Confidential property of the HART Communication Foundation
- * Copyright (c) 2018, FieldComm Group, Inc., All Rights Reserved 
- *************************************************************************************************
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  * Description: This holds the definitions used by both the Server and this APP.
  *	
