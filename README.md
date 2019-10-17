@@ -2,7 +2,7 @@
 
 ## ![FCG](https://avatars0.githubusercontent.com/u/26013747?s=50&v=4) FieldComm Group
 
-**hipserver** is one component of the HART-IP Developer Kit. For more information on the kit and its other components, see [here](https://github.com/FieldCommGroup/HART-IP-Developer-Kit) .  For more information about the kit, see [here](https://github.com/FieldCommGroup/HART-IP-Developer-Kit).
+**hipserver** is one component of the HART-IP Developer Kit. For more information on the kit and its other components, see [here](https://github.com/FieldCommGroup/HART-IP-Developer-Kit) . 
 
 This server component is common to the HART-IP server applications developed by FieldComm Group. It is the identical software used in the HART Test System and Wireless HART Test System. Future HART-IP server applications produced by FieldComm Group will also use this component.
 
