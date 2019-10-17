@@ -16,6 +16,46 @@ It supports UDP/IP, but does not support TCP/IP \(planned\).
 
 It does not implement security.  Security is not included in the HART-IP specification, but is currently being considered.  For now, security is the responsibility of the system integrator.
 
+## User Guide
+
+Pull the repository from the bash terminal with:
+
+```text
+  git clone https://github.com/FieldCommGroup/hipserver
+```
+
+\*\*\*\*
+
+**hipserver** command line is:
+
+```text
+hipserver -v -h -p <num> <app command line>
+```
+
+where:
+
+-v print version number and quit
+
+-h print help text and quit
+
+-p &lt;num&gt; specifies the port number to the app program.  The well-known default is 5094.  To two operate servers side-by-side, you will want to specify a separate port number for one of them.
+
+&lt;app command line&gt; is a command line, with options, used to launch the companion app program.  This is optional, as described below.
+
+**hipserver** always executes with a companion app program, **hipflowapp** in this case.  The everyday method to launch the server is:
+
+```text
+hipserver hipflowapp
+```
+
+In this case, the hipserver will launch itself, then the hipflowapp.
+
+Developers wanting to debug one or both applications will launch the programs as follows.
+
+### Single Command Line
+
+
+
 ## Developer Guide
 
 Read below to learn how to build and modify this component.
