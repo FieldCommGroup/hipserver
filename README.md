@@ -16,7 +16,7 @@ It does not catch malformed Token-Passing PDU’s.
 
 It supports UDP, but does not support TCP-IP.
 
-Does not implement security \(not included in the HART-IP spec\)
+It does not implement security \(not included in the HART-IP spec\)
 
 ### Developer Guide
 
@@ -46,7 +46,7 @@ Together, these two components form a HART-IP Flow Device. With this architectur
 
 Pull a copy of the repository using tag Kit\_1\_0. It contains four folders, as follows:
 
-**Server Folder** This folder contains the main program and functions for managing HART-IP connections and the App program connection.
+**Server T**his folder contains the main program and functions for managing HART-IP connections and the App program connection.
 
 It includes a _make_ based build system in files Makefile\*. To build hipserver, cd to this folder and type 'make'.
 
