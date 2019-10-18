@@ -18,7 +18,7 @@ It does not implement security.  Security is not included in the HART-IP specifi
 
 ## User Guide
 
-Pull the repository from the bash terminal with:
+Pull the repository from the bash terminal with this command line:
 
 ```text
   git clone https://github.com/FieldCommGroup/hipserver
@@ -26,7 +26,7 @@ Pull the repository from the bash terminal with:
 
 \*\*\*\*
 
-**hipserver** command line is:
+To launch the **hipserver**, the command line is:
 
 ```text
 hipserver -v -h -p <num> <app command line>
@@ -38,23 +38,19 @@ where:
 
 -h print help text and quit
 
--p &lt;num&gt; specifies the port number to the app program.  The well-known default is 5094.  To two operate servers side-by-side, you will want to specify a separate port number for one of them.
+-p &lt;num&gt; specifies the port number to the app program.  The well-known default is 5094.  To operate two servers side-by-side, you will want to specify a separate port number for one of them.
 
-&lt;app command line&gt; is a command line, with options, used to launch the companion app program.  This is optional, as described below.
+&lt;app command line&gt; is a bash command line, with options, used to launch the companion app program.  This argument is optional, as described below.
+
+To terminate the server, type Ctrl-C on the command line.
 
 **hipserver** always executes with a companion app program, **hipflowapp** in this case.  The everyday method to launch the server is:
 
 ```text
-hipserver hipflowapp
+sudo ./hipserver ./hipflowapp
 ```
 
-In this case, the hipserver will launch itself, then the hipflowapp.
-
-Developers wanting to debug one or both applications will launch the programs as follows.
-
-### Single Command Line
-
-
+In this case, the hipserver will launch itself, then the hipflowapp.  Elevated privileges are required for hipflowapp, hence launching the server with sudo.
 
 ## Developer Guide
 
