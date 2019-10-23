@@ -67,7 +67,8 @@ static errVal_t handle_sess_close_req(hartip_msg_t *p_request,
 static errVal_t handle_sess_init_req(hartip_msg_t *p_request,
 		hartip_msg_t *p_response, sockaddr_in_t client_addr);
 static errVal_t handle_token_passing_req(hartip_msg_t *p_request, uint8_t sessNum);
-static errVal_t handle_keepalive_req(hartip_msg_t *p_request, uint8_t sessNum);
+static errVal_t handle_keepalive_req(hartip_msg_t *p_request,
+		hartip_msg_t *p_response, uint8_t sessNum);
 static bool_t is_client_sess_valid(sockaddr_in_t *client_sockaddr,
 		uint8_t *pSessNum);
 static bool_t is_session_avlbl(uint8_t *pSessNum);
@@ -285,7 +286,7 @@ void *socketThrFunc(void *thrName)
 			break;
 		case HARTIP_MSG_ID_KEEPALIVE:
 			dbgp_logdbg("Keep-Alive PDU\n");
-			errval = handle_keepalive_req(&reqFromClient, sessNum);
+			errval = handle_keepalive_req(&reqFromClient, &rspToClient, sessNum);
 			if (errval != NO_ERROR)
 			{
 				print_to_both(p_toolLogPtr,
