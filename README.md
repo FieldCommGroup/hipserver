@@ -24,8 +24,6 @@ Pull the repository from the bash terminal with this command line:
   git clone https://github.com/FieldCommGroup/hipserver
 ```
 
-\*\*\*\*
-
 To launch the **hipserver**, the command line is:
 
 ```text
@@ -50,7 +48,7 @@ To terminate the server, type Ctrl-C on the command line.
 sudo ./hipserver ./hipflowapp
 ```
 
-In this case, the hipserver will launch itself, then the hipflowapp.  Elevated privileges are required for hipflowapp, hence launching the server with sudo.
+In this case, the **hipserver** will launch itself, then the **hipflowapp**.  Elevated privileges are required for **hipflowapp**, hence launching the server with sudo.
 
 ## Developer Guide
 
@@ -121,9 +119,9 @@ This folder is library code that is used by the **hipserver** and shared with th
 
 #### **Common**
 
-Files in this library older contain data type definitions, symbolic constants and enumerated types common to HART-IP server implementations.
+Files in this library folder contain data type definitions, symbolic constants and enumerated types common to HART-IP server implementations.
 
 #### Realtime
 
-This component also contains library code that is used by the **hipserver** and available for use by the app components for: POSIX mqueues, semaphores, signals and threads.
+This folde also contains library code that is used by the **hipserver** and available for use by the app components for: POSIX mqueues, semaphores, signals and threads.
 
