@@ -69,6 +69,8 @@ static errVal_t handle_sess_close_req(hartip_msg_t *p_request,
 static errVal_t handle_sess_init_req(hartip_msg_t *p_request,
 		hartip_msg_t *p_response, sockaddr_in_t client_addr);
 static errVal_t handle_token_passing_req(hartip_msg_t *p_request, uint8_t sessNum);
+static errVal_t handle_keepalive_req(hartip_msg_t *p_request,
+		hartip_msg_t *p_response, uint8_t sessNum);
 static bool_t is_client_sess_valid(sockaddr_in_t *client_sockaddr,
 		uint8_t *pSessNum);
 static bool_t is_session_avlbl(uint8_t *pSessNum);
@@ -284,7 +286,15 @@ void *socketThrFunc(void *thrName)
 						"Error in handle_token_passing_req()\n");
 			}
 			break;
-		case HARTIP_MSG_ID_KEEPALIVE: /* fall through */
+		case HARTIP_MSG_ID_KEEPALIVE:
+			dbgp_logdbg("Keep-Alive PDU\n");
+			errval = handle_keepalive_req(&reqFromClient, &rspToClient, sessNum);
+			if (errval != NO_ERROR)
+			{
+				print_to_both(p_toolLogPtr,
+						"Error in handle_keepalive_req()\n");
+			}
+			break;
 		case HARTIP_MSG_ID_DISCOVERY:
 			dbgp_init("Keep-Alive/Discovery msg\n");
 			break;
@@ -688,6 +698,60 @@ static errVal_t handle_sess_init_req(hartip_msg_t *p_request,
 		} while (FALSE);
 	}
 	sem_post(p_semServerTables);	// unlock server tables when done
+
+	return (errval);
+}
+
+
+/**
+ * handle_keepalive_req(): handle incoming keep alive request from
+ * the client
+ *
+ * There is nothing to do but reply success.  The receipt of the message
+ * resets the inactivity timer on the server.
+ */
+static errVal_t handle_keepalive_req(hartip_msg_t *p_request,
+		hartip_msg_t *p_response, uint8_t sessNum)
+{
+	errVal_t errval = NO_ERROR;
+
+	const char *funcName = "handle_keepalive_req";
+	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
+
+	do
+	{
+		if (p_request == NULL)
+		{
+			errval = POINTER_ERROR;
+			print_to_both(p_toolLogPtr, "NULL pointer (req) passed to %s\n",
+					funcName);
+			break;
+		}
+		if (p_response == NULL)
+		{
+			errval = POINTER_ERROR;
+			print_to_both(p_toolLogPtr, "NULL pointer (rsp) passed to %s\n",
+					funcName);
+			break;
+		}
+
+		/* Start with a clean slate */
+		memset(p_response, 0, sizeof(*p_response));
+
+		hartip_hdr_t *p_reqHdr = &p_request->hipHdr;
+		hartip_hdr_t *p_rspHdr = &p_response->hipHdr;
+
+		/* Build response for HART-IP Client */
+		p_rspHdr->version = HARTIP_PROTOCOL_VERSION;
+		p_rspHdr->msgType = HARTIP_MSG_TYPE_RESPONSE;
+		p_rspHdr->msgID = p_reqHdr->msgID;	// HARTIP_MSG_ID_KEEPALIVE
+		p_rspHdr->status = NO_ERROR;
+		p_rspHdr->seqNum = p_reqHdr->seqNum;
+		p_rspHdr->byteCount = HARTIP_HEADER_LEN;
+
+		send_rsp_to_client(p_response, &ClientSessTable[sessNum]);
+//		clear_session_info(sessNum);
+	} while (FALSE);
 
 	return (errval);
 }
