@@ -748,7 +748,6 @@ static errVal_t handle_keepalive_req(hartip_msg_t *p_request,
 		p_rspHdr->byteCount = HARTIP_HEADER_LEN;
 
 		send_rsp_to_client(p_response, &ClientSessTable[sessNum]);
-//		clear_session_info(sessNum);
 	} while (FALSE);
 
 	return (errval);
