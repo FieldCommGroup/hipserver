@@ -2,6 +2,8 @@
 
 ## ![FCG](https://avatars0.githubusercontent.com/u/26013747?s=50&v=4) FieldComm Group
 
+## hipserver
+
 **hipserver** is one component of the [HART-IP Developer Kit](https://github.com/FieldCommGroup/HART-IP-Developer-Kit). It manages HART-IP connections with client programs and also with the companion [**hipflowapp** ](https://github.com/FieldCommGroup/hipflowapp)component, which implements the flow device functionality.
 
 This component is common to the HART-IP server applications developed by FieldComm Group. It is the identical software used in the HART Test System and Wireless HART Test System. Future HART-IP server applications produced by FieldComm Group will also use this component.
@@ -10,9 +12,9 @@ This component is common to the HART-IP server applications developed by FieldCo
 
 It does not pass HART-IP Test System test cases, as there is not a released test specification for HART-IP devices.  However, that specification is in development and the HART Test System will be enhanced to include these tests.
 
-It does not catch malformed Token-Passing PDU’s \(planned\).
+It does not check for malformed Token-Passing PDU’s \(planned\).
 
-It supports UDP/IP, but does not support TCP/IP \(planned\).
+It supports UDP/IP, but does not yet support TCP/IP \(planned\).
 
 The Pi computer is configured for DHCP.  You will wan to configure it for a static address for any production use.
 
@@ -70,6 +72,8 @@ The following diagram shows how the **hipserver** is related to the other compon
 
 ![Flow Device Components](.gitbook/assets/flowcomponent.png)
 
+![Flow Device Components](.gitbook/assets/flowcomponent%20%281%29.png)
+
 Together, these two components form a HART-IP Flow Device. With this architecture, it is easy to change out one app component with another to get a completely different server application. Here are some examples:
 
 * a pass-through to a wired HART device,
@@ -78,18 +82,33 @@ Together, these two components form a HART-IP Flow Device. With this architectur
 
 ### Repository Contents
 
-The repository contains four folders:
+All code compiles with g++ version 7.4. 
+
+It includes a _make_ based build system in files named Makefile\*. To build **hipserver**, move to this folder and type 'make'.  The executable output file lands in this folder and is named **hipserver**.
+
+The reopsitory contains four folders:
 
 * Server
 * AppConnect
 * Common
 * Realtime
 
-#### **Server** 
+**Server** This folder contains the main program, functions for managing HART-IP connections and the App program connection.
+
+| File | Contents |
+| :--- | :--- |
+| .cproject, .project | These are Eclipse Oxygen project files. |
+| debug.h | Contains \#defines that enable expanded output in the log files. |
+| hssubscribe.cpp,.h | Maintains subscriptions for published commands. |
+| hsrequest.cpp,.h | The server holds copies of each request and matches each to responses received from **hipflowapp**. |
+| hsudp.cpp,.h | HART-IP functionality and message handling reside in these functions. |
+| Makefile |  Includes make rules for 'all' and 'clean'. |
+| Makefile.inc | Included by Makefile, specifies which source files are built. |
+| Makefile\_macros.inc | Included by Makefile, specifies compiler options. |
 
 This folder contains the main program and functions for managing HART-IP connections and the App program connection.
 
-It includes a _make_ based build system in files Makefile\*. To build **hipserver**, cd to this folder and type 'make'.
+Some interesting files in this folder are described in the following table.
 
 | File | Contents |
 | :--- | :--- |
@@ -106,7 +125,16 @@ It includes a _make_ based build system in files Makefile\*. To build **hipserve
 | hsthreads.cpp,.h | Manage the threads used |
 | hsudp.cpp,.h | Socket management, receive and reply to HART-IP messages, route messages |
 
-#### **AppConnect**
+**AppConnect** This library code is shared with HART-IP server App programs, such as **hipflowapp**.  The contained classes specify what data is communicated via POSIX message queues  between the **hipserver** and **hipflowapp**.
+
+| File | Contents |
+| :--- | :--- |
+| app.cpp.,h | Contains the App class, which is the parent class for all Apps that communicate with **hipserver**.  The virtual methods in this class should be implemented by each App's sub-class. |
+| appconnector.h | This is a template class that defines the message pump for all Apps. |
+| appmsg.cpp,.h | This class defines the data that is passed between **hipserver** and its Apps. |
+| apppdu.cpp,.h | This class provides convenient access to the message contents. |
+| tppdu.cpp,.h | This lightweight class parses TokenPassing PDU's. |
+| tpdll.h | Symbolic constants used to parse HART message frames. |
 
 This folder is library code that is used by the **hipserver** and shared with the app components.
 
@@ -119,11 +147,9 @@ This folder is library code that is used by the **hipserver** and shared with th
 | tpdll.h | Symbolic constants required to parse a HART message PDU |
 | tppdu.cpp,.h | Methods in this lightweight class are used to parse a HART message |
 
-#### **Common**
+**Common** folder contains headers defining data types, error values and other enumeration types.
 
-Files in this library folder contain data type definitions, symbolic constants and enumerated types common to HART-IP server implementations.
+**Realtime** folder contains library code for managing signals, semaphores, threads and POSIX message queues.
 
-#### Realtime
 
-This folde also contains library code that is used by the **hipserver** and available for use by the app components for: POSIX mqueues, semaphores, signals and threads.
 
