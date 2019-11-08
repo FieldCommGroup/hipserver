@@ -112,7 +112,7 @@ void AppPdu::setMasterAddr( bool isPrimary )
 
 bool AppPdu::isPrimary()
 {
-	return ((pdu[1] & 0x7F) != 0 );
+	return ((pdu[1] & 0x80) != 0 );
 }
 
 /* set up the pdu with delim and address */
