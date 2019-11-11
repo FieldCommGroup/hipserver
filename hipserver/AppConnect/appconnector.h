@@ -539,8 +539,8 @@ int AppConnector<PDU_CLASS>::processMessage(App *pApp) // message is in p_Pdu->b
     if (  (ret = pApp->handleMessage(&usersPduClass)) == NO_ERROR  )
     {
 #ifdef _DEBUG
-      printf("TRANSMIT----------|");
-      pPdu->printMsg();// stevev 18mar2019 - changed from p_Pdu to pPdu
+     // printf("TRANSMIT----------|");
+     // pPdu->printMsg();// stevev 18mar2019 - changed from p_Pdu to pPdu
 #endif
       sendMessage(); // send same message back
 
