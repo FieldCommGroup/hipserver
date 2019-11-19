@@ -16,7 +16,7 @@ It does not check for malformed Token-Passing PDU’s \(planned\).
 
 It supports UDP/IP, but does not yet support TCP/IP \(planned\).
 
-The Pi computer is configured for DHCP.  You will wan to configure it for a static address for any production use.
+The Pi computer is configured for DHCP.  You will want to configure it for a static address for any production use.
 
 It does not implement security.  Security is not included in the HART-IP specification, but is currently being considered.  For now, security is the responsibility of the system integrator.
 

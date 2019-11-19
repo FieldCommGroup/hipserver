@@ -82,7 +82,9 @@
 
 /* HART other defs */
 #define HART_NOT_CLASFD			 ((uint8_t)0)
-//#define HART_NOT_USED			 ((uint8_t)64) // stevev 22jul19-this is actually not implemented
+#define HART_UNITCODE_NOT_USED   ((uint8_t)250)
 #define HART_NOT_USED            ((uint8_t)250)/* hart standard not-used value*/
 #define HART_DEVICESTAT_NOT_USED ((uint8_t)48)
+
+
 #endif /* _HARTDEFS_H */
