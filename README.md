@@ -72,7 +72,6 @@ The following diagram shows how the **hipserver** is related to the other compon
 
 ![Flow Device Components](.gitbook/assets/flowcomponent.png)
 
-![Flow Device Components](.gitbook/assets/flowcomponent%20%281%29.png)
 
 Together, these two components form a HART-IP Flow Device. With this architecture, it is easy to change out one app component with another to get a completely different server application. Here are some examples:
 
@@ -93,18 +92,7 @@ The reopsitory contains four folders:
 * Common
 * Realtime
 
-**Server** This folder contains the main program, functions for managing HART-IP connections and the App program connection.
-
-| File | Contents |
-| :--- | :--- |
-| .cproject, .project | These are Eclipse Oxygen project files. |
-| debug.h | Contains \#defines that enable expanded output in the log files. |
-| hssubscribe.cpp,.h | Maintains subscriptions for published commands. |
-| hsrequest.cpp,.h | The server holds copies of each request and matches each to responses received from **hipflowapp**. |
-| hsudp.cpp,.h | HART-IP functionality and message handling reside in these functions. |
-| Makefile |  Includes make rules for 'all' and 'clean'. |
-| Makefile.inc | Included by Makefile, specifies which source files are built. |
-| Makefile\_macros.inc | Included by Makefile, specifies compiler options. |
+#### Server
 
 This folder contains the main program and functions for managing HART-IP connections and the App program connection.
 
@@ -125,7 +113,8 @@ Some interesting files in this folder are described in the following table.
 | hsthreads.cpp,.h | Manage the threads used |
 | hsudp.cpp,.h | Socket management, receive and reply to HART-IP messages, route messages |
 
-**AppConnect** This library code is shared with HART-IP server App programs, such as **hipflowapp**.  The contained classes specify what data is communicated via POSIX message queues  between the **hipserver** and **hipflowapp**.
+#### AppConnect
+This library code is shared with HART-IP server App programs, such as **hipflowapp**.  The contained classes specify what data is communicated via POSIX message queues  between the **hipserver** and **hipflowapp**.
 
 | File | Contents |
 | :--- | :--- |
@@ -136,20 +125,12 @@ Some interesting files in this folder are described in the following table.
 | tppdu.cpp,.h | This lightweight class parses TokenPassing PDU's. |
 | tpdll.h | Symbolic constants used to parse HART message frames. |
 
-This folder is library code that is used by the **hipserver** and shared with the app components.
 
-| Files | Contents |
-| :--- | :--- |
-| app.cpp,.h | Contains the App base class for all App components.  Each App must have a subclass that implements the virtual functions defined |
-| appconnector.h | This template class contains the message pump and calls the App object to dispatch and receive messages |
-| appmsg.h | Defines the message structure of messages passed between hipserver and the app |
-| apppdu.cpp,.h | Provide convenient access to the data inside an AppMsg |
-| tpdll.h | Symbolic constants required to parse a HART message PDU |
-| tppdu.cpp,.h | Methods in this lightweight class are used to parse a HART message |
+#### Common
+This folder contains headers defining data types, error values and other enumeration types.
 
-**Common** folder contains headers defining data types, error values and other enumeration types.
-
-**Realtime** folder contains library code for managing signals, semaphores, threads and POSIX message queues.
+#### Realtime
+This folder contains library code for managing signals, semaphores, threads and POSIX message queues.
 
 
 
