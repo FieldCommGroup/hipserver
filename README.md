@@ -14,13 +14,13 @@ It does not pass HART-IP Test System test cases, as there is not a released test
 
 It does not check for malformed Token-Passing PDU’s.
 
-It supports UDP/IP, but does not yet support TCP/IP.
+It supports UDP, but does not yet support TCP.
 
 The Pi computer is configured for DHCP.  You will want to configure it for a static address for any production use.
 
 It must be launched from a command line.  For production usage, it should be installed as a Linux system service instead.
 
-It does not implement security.  Security is not included in the HART-IP specification, but is currently being considered.  For now, security is the responsibility of the system integrator.
+It does not implement security.  Security is required by the HART-IP specification, but specific security is not defined.  For now, security is the responsibility of the system integrator.
 
 ## User Guide
 
