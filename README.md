@@ -24,10 +24,12 @@ It does not implement security.  Security is required by the HART-IP specificati
 
 ## User Guide
 
-Pull the repository from the bash terminal with this command line:
+Pull from the repository and build using the bash terminal:
 
 ```text
   git clone https://github.com/FieldCommGroup/hipserver
+  cd hipserver/hipserver/Server/
+  make
 ```
 
 To launch the **hipserver**, the command line is:
