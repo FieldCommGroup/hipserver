@@ -70,7 +70,7 @@ Read below to learn how to build and modify this component.
 * Published message subscriptions for the clients
 * Publishing burst messages to subscribed clients
 * Checking HART-IP and HART message framing
-* Sending and receiving HART Token-passing messages with a companion server application component program, **hipflowapp**, described [here](https://github.com/FieldCommGroup/HART-IP-Developer-Kit/blob/master/doc/HART-IP%20FlowDevice%20Spec.md).
+* Sending and receiving HART Token-passing messages with a companion server application component program, **hipflowapp**, described [here](https://github.com/FieldCommGroup/hipflowapp).
 
 The following diagram shows how the **hipserver** is related to the other components.
 
