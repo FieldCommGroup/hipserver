@@ -66,7 +66,7 @@ Read below to learn how to build and modify this component.
 
 **hipserver** is the client-facing component program that manages IP connections with HART-IP client \(or host\) programs. It manages:
 
-* HART-IP connections with up to three clients
+* HART-IP connections with up to five clients
 * Published message subscriptions for the clients
 * Publishing burst messages to subscribed clients
 * Checking HART-IP and HART message framing
