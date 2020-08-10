@@ -515,11 +515,12 @@ char *TpPdu::ToHex()
 	static char buf[2000];
 	memset(buf, 0, 2000);
 
-	char byteval[10];
+  const int bufsiz = 10;
+	char byteval[bufsiz];
 	int len = PduLength() + 1;
 	for (int i = 0; i < len; i++)
 	{
-		sprintf(byteval, "%02X ", pPDU[i]);
+		snprintf(byteval, bufsiz, "%02X ", pPDU[i]);
 		strcat(buf, byteval);
 	}
 	return buf;

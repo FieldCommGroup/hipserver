@@ -168,6 +168,12 @@ uint8_t process_command_line(int argc, char* argv[])
     strcat(AppCommandLine, argv[i]);
     strcat(AppCommandLine, " ");
   }
+
+  if (strlen(AppCommandLine)+1 > sizeof(AppCommandLine))
+  {
+    printf("Command line arguments are too large\n");
+    exit(1);
+  }
   errval = NO_ERROR;
 
   return (errval);

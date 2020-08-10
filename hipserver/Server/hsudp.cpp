@@ -1040,6 +1040,13 @@ static errVal_t parse_client_req(uint8_t *p_reqBuff, ssize_t lenPdu,
 		uint16_t payloadLen = (p_clientMsgHdr->byteCount) -
 		HARTIP_HEADER_LEN;
 
+		if (payloadLen > TPPDU_MAX_FRAMELEN - HARTIP_HEADER_LEN)
+		{
+			print_to_both(p_toolLogPtr, "HARTIP buffer overflow!\n");
+			errval = OVERFLOW_ERROR;
+			break;
+		}
+
 		if (payloadLen > 0)
 		{
 			memcpy(p_parsedReq->hipTPPDU, &p_reqBuff[HARTIP_HEADER_LEN],
