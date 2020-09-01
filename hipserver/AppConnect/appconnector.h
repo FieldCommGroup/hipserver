@@ -94,13 +94,13 @@ private:
   uint16_t sndCnt;// mainly to keep alignment;
 
   /* there can only be one interface so statics make sense */
-  static bool time2stop; // abortAPP will set this via signal user2 that breaks the mq_receive
+  static bool time2stop;  // abortAPP will set this via signal user2 that breaks the mq_receive
   static void abort_handler(int signo);
 
 public:
   AppConnector();
   virtual ~AppConnector();
-
+	
   // two step instantiation:  
   //    new AppConnector();  
   //    then, when the app is ready to run, call run(pApp);
@@ -207,13 +207,6 @@ AppConnector<PDU_CLASS>::AppConnector() : stxCnt(0),ackCnt(0),bakCnt(0), sndCnt(
   //  { INIT_DEVTYPE_HI, INIT_DEVTYPE_LO, INIT_DEV_ID };    // TODO
     pPdu->setLong(tLn);  // set long address to null value
 
-    // moved to main
-//    /* logging */
-//    errval = open_toolLog();
-//    if (errval != NO_ERROR)  // prints error message
-//    {
-//      break;
-//    }
 
     if (signal(SIGUSR2, abort_handler) == SIG_ERR)
     {

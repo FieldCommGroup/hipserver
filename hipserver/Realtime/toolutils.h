@@ -53,7 +53,7 @@ void close_logfile(FILE *p_filePtr);
 void close_toolLog(void);
 errVal_t open_logfile(FILE **pp_filePtr, char *p_fileName);
 errVal_t open_toolLog(void);
-void print_hexbytes(uint8_t *bytes, uint8_t numBytes, FILE *p_filePtr = NULL);
+void print_hexbytes(uint8_t *bytes, uint8_t numBytes, FILE *p_filePtr/* = NULL*/);
 void print_to_both(FILE *p_filePtr, const char *format, ...);
 void print_to_log(FILE *p_filePtr, const char *format, ...);
 void script_sleep(uint32_t sec);
