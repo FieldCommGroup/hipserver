@@ -89,12 +89,13 @@ All code compiles with g++ version 7.4.
 
 It includes a _make_ based build system in files named Makefile\*. To build **hipserver**, move to this folder and type 'make'.  The executable output file lands in this folder and is named **hipserver**.
 
-The reopsitory contains four folders:
+The reopsitory contains five folders:
 
 * Server
 * AppConnect
 * Common
 * Realtime
+* [safestringlib](https://github.com/intel/safestringlib)
 
 #### Server
 
@@ -136,5 +137,7 @@ This folder contains headers defining data types, error values and other enumera
 #### Realtime
 This folder contains library code for managing signals, semaphores, threads and POSIX message queues.
 
+#### safestringlib
+This folder contains an adapted version of Intel's library from GitHub.  See the README file in that folder for more information.
 
 

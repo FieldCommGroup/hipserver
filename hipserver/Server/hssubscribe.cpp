@@ -119,11 +119,11 @@ bool Subscription::AddressMatch(uint8_t *address)
 	// 1011 1111  mask off field device in burst mode bit
 
 	uint8_t a1[TPHDR_ADDRLEN_UNIQ];
-	memcpy(a1, address, TPHDR_ADDRLEN_UNIQ);
+	memcpy_s(a1, TPHDR_ADDRLEN_UNIQ, address, TPHDR_ADDRLEN_UNIQ);
 	a1[0] &= 0xBF;
 
 	uint8_t a2[TPHDR_ADDRLEN_UNIQ];
-	memcpy(a2, UniqueID, TPHDR_ADDRLEN_UNIQ);
+	memcpy_s(a2, TPHDR_ADDRLEN_UNIQ, UniqueID, TPHDR_ADDRLEN_UNIQ);
 	a2[0] &= 0xBF;
 
 	bool match = (memcmp(a1, a2, TPHDR_ADDRLEN_UNIQ)==0);
@@ -132,7 +132,7 @@ bool Subscription::AddressMatch(uint8_t *address)
 
 void Subscription::SetAddress(const uint8_t *address)
 {
-  memcpy(UniqueID, address, TPHDR_ADDRLEN_UNIQ);
+  memcpy_s(UniqueID, TPHDR_ADDRLEN_UNIQ, address, TPHDR_ADDRLEN_UNIQ);
 }
 
 bool Subscription::IsBroadcastAddress()
@@ -423,11 +423,11 @@ bool is_attached(const uint8_t *a)
   {
     TpPdu record(*itr);
 
-    int len = 5;
+    const int len = 5;
     uint8_t buf1[5];
     uint8_t buf2[5];
-    memcpy(buf1, record.Address(), len);
-    memcpy(buf2, a, len);
+    memcpy_s(buf1, len, record.Address(), len);
+    memcpy_s(buf2, len, a, len);
     int x = memcmp(buf1, buf2, len );
 
     if (record.AddressMatch(a)) // first request bytes are 5-byte address.

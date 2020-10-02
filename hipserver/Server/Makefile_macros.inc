@@ -26,10 +26,10 @@
 
 CC        = g++ -c
 CXX        = g++ -c
-CFLAGS     = -g -DLINUX -I. -I../Common  -I../Realtime  -I../AppConnect
-CXXFLAGS   = -g -DLINUX -I. -I../Common  -I../Realtime  -I../AppConnect
+CFLAGS     = -g -DLINUX -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
+CXXFLAGS   = -g -DLINUX -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
 ECHO       = @echo
-INCL_LIBS  = -lpthread -lrt
-LD         = g++
+INCL_LIBS  = -lpthread -lrt   ../safestringlib/libsafestring.a
+LD         = g++ 
 RM         = @rm
 

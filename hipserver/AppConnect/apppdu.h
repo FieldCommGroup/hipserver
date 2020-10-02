@@ -78,7 +78,7 @@ public: // accessors
 	uint8_t *myAddress() {  return  IsLongFrame()?&(longAddr[0]):&(shrtAddr); };
 	bool    isPrimary();// 4devices  host address, false: secondary
 	void setShort(uint8_t poll) { shrtAddr= poll; };
-	void setLong(uint8_t lng[]){ memcpy(longAddr, lng, 5); };
+	void setLong(uint8_t lng[]){ memcpy_s(longAddr, TPHDR_ADDRLEN_UNIQ, lng, TPHDR_ADDRLEN_UNIQ); };
 	void learnAddress();
 };
 

@@ -25,10 +25,13 @@
 #ifndef _TOOLQUEUES_H_
 #define _TOOLQUEUES_H_
 
+using namespace std;
+
 #include <mqueue.h>
 
 #include "datatypes.h"
 #include "errval.h"
+#include <string>
 
 /****************
  *  Definitions
@@ -105,7 +108,7 @@ extern mqd_t reqQueue;  // HART request messages routed to device
  *  Function Prototypes
  ************************/
 int highest_instance_number();
-void make_mq_name(const char *basename, char *instance, char *fname);
+string make_mq_name(const char *basename, char *instance);
 
 errVal_t open_mqueue(mqd_t *p_mqDesc, char *mqName, int32_t qFlag,
 		int32_t msgsize, int32_t maxmsg);

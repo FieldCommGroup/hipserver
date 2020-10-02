@@ -40,6 +40,7 @@
 
 #include <string.h>
 #include "tpdll.h"
+#include "safe_lib.h"
 
 #define HART_APP_CMD	0
 #define INIT_APP_CMD	1
@@ -54,14 +55,14 @@ struct AppMsg
 	uint8_t pdu[TPPDU_MAX_FRAMELEN];	// HART TP PDU or APP PDU
 
 	// command and transaction need to stay..void clear() { memset( this, 0, APP_MSG_SIZE); };
-	void clear() { memset(pdu, 0, TPPDU_MAX_FRAMELEN); };//leave cmd & transaction
+	void clear() { memset_s(pdu, TPPDU_MAX_FRAMELEN, 0); };//leave cmd & transaction
 	AppMsg& operator=(const AppMsg &SRC) {command = SRC.command;
-			transaction = SRC.transaction; memcpy(&pdu[0],&(SRC.pdu[0]),TPPDU_MAX_FRAMELEN);
+			transaction = SRC.transaction; memcpy_s(&pdu[0],TPPDU_MAX_FRAMELEN, &(SRC.pdu[0]),TPPDU_MAX_FRAMELEN);
 			return *this;   };
 
 	uint8_t *GetPduBuffer()   { return pdu; };
-	void     ClearPduBuffer() { memset(pdu, 0, sizeof(pdu)); };
-	void     CopyPduBuffer(uint8_t *to ) { memcpy(to, pdu, sizeof(pdu)); };
+	void     ClearPduBuffer() { memset_s(pdu, sizeof(pdu), 0); };
+	void     CopyPduBuffer(uint8_t *to ) { memcpy_s(to, TPPDU_MAX_FRAMELEN, pdu, sizeof(pdu)); };
 };
 
 

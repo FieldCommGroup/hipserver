@@ -32,7 +32,7 @@ AppPdu::AppPdu()
 void AppPdu::copy( const AppPdu &src )
 {
 	shrtAddr = src.shrtAddr;
-	memcpy(&(longAddr[0]), &(src.longAddr[0]), 5);
+	memcpy_s(&(longAddr[0]), sizeof(longAddr), &(src.longAddr[0]), sizeof(src.longAddr));
 	bytesLoaded = src.bytesLoaded;
 	AppMsg * pMsg = dynamic_cast<AppMsg *>(this);
 	*pMsg = src;    // operator=
@@ -119,7 +119,7 @@ bool AppPdu::isPrimary()
 void AppPdu::setupAddress( uint8_t newDelim )
 {
 	pdu[TP_OFFSET_DELIM] = newDelim;
-	memcpy( &(pdu[TP_OFFSET_ADDR]), longAddr, 5 );
+	memcpy_s( &(pdu[TP_OFFSET_ADDR]), TPHDR_ADDRLEN_UNIQ, longAddr, TPHDR_ADDRLEN_UNIQ );
 	pdu[TP_OFFSET_CMD_UNIQ] = 0;
 }
 
@@ -134,8 +134,8 @@ void AppPdu::learnAddress()
 		int deviceIdByte = 9;
 		int deviceIdSize = 3;
 
-		memcpy(ln, ResponseBytes()+expDeviceTypeByte, expDeviceTypeSize);	// expanded device type
-		memcpy(ln+expDeviceTypeSize, ResponseBytes()+deviceIdByte, deviceIdSize);	// device ID
+		memcpy_s(ln, TPHDR_ADDRLEN_UNIQ, ResponseBytes() + expDeviceTypeByte, expDeviceTypeSize); 	// expanded device type
+		memcpy_s(ln+expDeviceTypeSize, deviceIdSize, ResponseBytes()+deviceIdByte, deviceIdSize);	// device ID
 
 		setLong(ln);
 		setShort(*Address());

@@ -43,6 +43,11 @@
 #include "toolsems.h"
 #include "tppdu.h"
 
+#include <string>
+#include "stdarg.h"
+
+#include "safe_lib.h"
+
 /************
  *  Globals
  ************/
@@ -91,11 +96,12 @@ int highest_instance_number()
 	}
 
 	/* Read the output a line at a time  */
-	char path[1200];
+  const int pathsize = 1200;
+	char path[pathsize];
 	while (fgets(path, sizeof(path)-1, fp) != NULL)
 	{
 		// lines look like: /dev/mqueue/APPREQ_queue_xxx\n
-		char *p = path + strlen(path)-4;
+		char *p = path + strnlen_s(path, pathsize) -4;
 		int n = atoi(p);
 		highest = n > highest ? n : highest;
 	}
@@ -105,9 +111,13 @@ int highest_instance_number()
 	return highest;
 }
 
-void make_mq_name(const char *basename, char *instance, char *fname)
+string make_mq_name(const char *basename, char *instance /*, char *fname*/)
 {
-	sprintf(fname, "%s_%s", basename, instance);
+  string u = "_";
+  string s = basename + u + instance;
+  return s;
+
+//	sprintf(fname, "%s_%s", basename, instance);
 }
 
 /*****************************
@@ -180,7 +190,7 @@ void close_mqueues(void)
  *    close /APPCOM
  *    unlink MQ /APPCOM so it is removed from the system
  */
-void open_appcom(bool isServer, char *instance /* returned */)
+void open_appcom(bool isServer, char *instance)
 {
 	/*
 	 * we create MQ names based on a "random" number, actually the number of seconds since the epoch
@@ -189,8 +199,8 @@ void open_appcom(bool isServer, char *instance /* returned */)
 	 */
 
 	mqd_t mqcom;
-    int32_t mqFlag = QOPEN_FLAG_RDWR;
-	memset(instance, 0, COM_MSGSIZE);
+  int32_t mqFlag = QOPEN_FLAG_RDWR;
+	memset_s(instance, COM_MSGSIZE, 0);
 	if (isServer)
 	{
 		// server will call this with isServer = true
@@ -201,7 +211,9 @@ void open_appcom(bool isServer, char *instance /* returned */)
 			print_to_both(p_toolLogPtr, "Cannot read the realtime clock.  Exiting...\n");
 			exit(1);
 		}
-		sprintf(instance, "%08x", (unsigned) ts.tv_sec);	// seconds since the epoch)
+
+    const char *format = "%08x";		
+    sprintf_s(instance, COM_MSGSIZE, format, ((unsigned) ts.tv_sec));	// seconds since the epoch)
 	}
 	// else APP will call this with create = false
 
@@ -272,13 +284,13 @@ errVal_t create_mqueues(mqueue_usage_t usage)
     {
 		mqFlag |= QOPEN_FLAG_CREATE;
 
-		open_appcom(true, instance);
+    	open_appcom(true, instance);
     }
 
     /* Use RSP to send msg to Server */
-    char mqName[80];
-    make_mq_name(QNAME_RSP, instance, mqName);
-    errval = open_mqueue(&rspQueue, mqName, mqFlag,
+ //   char mqName[80];
+    string mqName = make_mq_name(QNAME_RSP, instance);
+    errval = open_mqueue(&rspQueue, (char*) mqName.c_str(), mqFlag,
     APP_MSG_SIZE, MAX_QUEUE_LEN);
     if (errval != NO_ERROR)
     {
@@ -288,8 +300,8 @@ errVal_t create_mqueues(mqueue_usage_t usage)
     dbgp_intfc("  Created APP-To-Server queue\n");
 
     /* mqueue for Server to send msg to APP */
-    make_mq_name(QNAME_REQ, instance, mqName);
-    errval = open_mqueue(&reqQueue, mqName, mqFlag,
+    mqName = make_mq_name(QNAME_REQ, instance);
+    errval = open_mqueue(&reqQueue, (char*) mqName.c_str(), mqFlag,
     APP_MSG_SIZE, MAX_QUEUE_LEN);
     if (errval != NO_ERROR)
     {
@@ -366,7 +378,7 @@ errVal_t rcv_msg_from_Q(mqd_t mq, void *p_msg, mqueue_blocking_t blocking)
   errVal_t errval = NO_ERROR;
   char recvBuff[APP_MSG_SIZE];
 
-  memset(recvBuff, 0, sizeof(recvBuff));
+  memset_s(recvBuff, sizeof(recvBuff), 0);
 
   do
   {
@@ -410,7 +422,7 @@ errVal_t rcv_msg_from_Q(mqd_t mq, void *p_msg, mqueue_blocking_t blocking)
       break;
     }
 
-    memcpy(p_msg, recvBuff, numBytesRead);
+    memcpy_s(p_msg, APP_MSG_SIZE, recvBuff, numBytesRead);
   } while (false);
 
   return errval;
@@ -467,7 +479,7 @@ errVal_t open_mqueue(mqd_t *p_mqDesc, char *mqName, int32_t qFlag,
      * of the program.
      */
     char msgBuff[APP_MSG_SIZE + 100]; // large enough
-    memset(msgBuff, 0, sizeof(msgBuff));
+    memset_s(msgBuff, sizeof(msgBuff), 0);
 
 //  BYTE *buf = (BYTE *) malloc(msgsize);
 //  if (buf)

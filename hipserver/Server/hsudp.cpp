@@ -185,9 +185,9 @@ void *socketThrFunc(void *thrName)
 	hartip_msg_t rspToClient;
 
 	/* Start with a clean slate */
-	memset(reqBuff, 0, sizeof(reqBuff));
-	memset(&reqFromClient, 0, sizeof(reqFromClient));
-	memset(&rspToClient, 0, sizeof(rspToClient));
+	memset_s(reqBuff, sizeof(reqBuff), 0);
+	memset_s(&reqFromClient, sizeof(reqFromClient), 0);
+	memset_s(&rspToClient, sizeof(rspToClient), 0);
 
 	sockaddr_in_t client_sockaddr;
 	uint8_t sessNum = 0;
@@ -205,7 +205,7 @@ void *socketThrFunc(void *thrName)
 		}
 
 		// Clear buffer for receiving next client request
-		memset(reqBuff, 0, sizeof(reqBuff));
+		memset_s(reqBuff, sizeof(reqBuff), 0);
 
 		errval = wait_for_client_req(reqBuff, &pduLen, &client_sockaddr);
 		if (errval != NO_ERROR)
@@ -214,7 +214,7 @@ void *socketThrFunc(void *thrName)
 			continue;
 		}
 		// Clear struct before usage
-		memset(&reqFromClient, 0, sizeof(reqFromClient));
+		memset_s(&reqFromClient, sizeof(reqFromClient), 0);
 
 		errval = parse_client_req(reqBuff, pduLen, &reqFromClient);
 		if (errval != NO_ERROR)
@@ -242,7 +242,7 @@ void *socketThrFunc(void *thrName)
 		}
 
 		// Clear struct before usage
-		memset(&rspToClient, 0, sizeof(rspToClient));
+		memset_s(&rspToClient, sizeof(rspToClient), 0);
 
 		dbgp_logdbg("#*#*#*# Server recd a ");
 
@@ -349,7 +349,7 @@ errVal_t send_rsp_to_client(hartip_msg_t *p_response,
 		uint8_t rspBuff[HS_MAX_BUFFSIZE];
 
 		/* Start with a clean slate */
-		memset(rspBuff, 0, sizeof(rspBuff));
+		memset_s(rspBuff, sizeof(rspBuff), 0);
 
 		/* Fill in the version */
 		idx = HARTIP_OFFSET_VERSION;
@@ -383,8 +383,8 @@ errVal_t send_rsp_to_client(hartip_msg_t *p_response,
 		uint16_t payloadLen = byteCount - HARTIP_HEADER_LEN;
 		if (payloadLen > 0)
 		{
-			memcpy(&rspBuff[HARTIP_HEADER_LEN], p_response->hipTPPDU,
-					payloadLen);
+			memcpy_s(&rspBuff[HARTIP_HEADER_LEN], (TPPDU_MAX_FRAMELEN - TPPDU_MAX_HDRLEN), 
+					p_response->hipTPPDU, payloadLen);
 		}
 
 		uint16_t msgLen = HARTIP_HEADER_LEN + payloadLen;
@@ -453,7 +453,7 @@ static errVal_t create_udpserver_socket(uint16_t serverPortNum,
 		}
 
 		sockaddr_in_t server_addr;
-		memset(&server_addr, 0, sizeof(server_addr));
+		memset_s(&server_addr, sizeof(server_addr), 0);
 
 		server_addr.sin_family = AF_INET;
 		server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -536,7 +536,7 @@ static errVal_t handle_sess_close_req(hartip_msg_t *p_request,
 		}
 
 		/* Start with a clean slate */
-		memset(p_response, 0, sizeof(*p_response));
+		memset_s(p_response, sizeof(*p_response), 0);
 
 		hartip_hdr_t *p_reqHdr = &p_request->hipHdr;
 		hartip_hdr_t *p_rspHdr = &p_response->hipHdr;
@@ -583,7 +583,7 @@ static errVal_t handle_sess_init_req(hartip_msg_t *p_request,
 			}
 
 			/* Start with a clean slate */
-			memset(p_response, 0, sizeof(*p_response));
+			memset_s(p_response, sizeof(*p_response), 0);
 
 			hartip_hdr_t *p_reqHdr = &p_request->hipHdr;
 			hartip_hdr_t *p_rspHdr = &p_response->hipHdr;
@@ -603,8 +603,8 @@ static errVal_t handle_sess_init_req(hartip_msg_t *p_request,
 			/* Fill in the payload, if long enough */
 			if (payloadLen >= HARTIP_SESS_INIT_PYLD_LEN)
 			{
-				memcpy(p_response->hipTPPDU, p_request->hipTPPDU,
-				HARTIP_SESS_INIT_PYLD_LEN);
+				memcpy_s(p_response->hipTPPDU, HARTIP_MAX_PYLD_LEN, 
+					p_request->hipTPPDU, HARTIP_SESS_INIT_PYLD_LEN);
 				p_rspHdr->byteCount += HARTIP_SESS_INIT_PYLD_LEN;
 
 				/* First byte of payload should be set to Primary Master */
@@ -669,8 +669,8 @@ static errVal_t handle_sess_init_req(hartip_msg_t *p_request,
 				dbgp_hs("Current Session #%d\n", thisSess);
 
 
-				memcpy(&pCurrentSession->clientAddr, &client_addr,
-						sizeof(client_addr));
+				memcpy_s(&pCurrentSession->clientAddr, sizeof(hartip_session_t::clientAddr), 
+						&client_addr, sizeof(client_addr));
 				pCurrentSession->id = HARTIP_SESSION_ID_OK;
 				int32_t sessSig = SIG_INACTIVITY_TIMER(thisSess);
 
@@ -736,7 +736,7 @@ static errVal_t handle_keepalive_req(hartip_msg_t *p_request,
 		}
 
 		/* Start with a clean slate */
-		memset(p_response, 0, sizeof(*p_response));
+		memset_s(p_response, sizeof(*p_response), 0);
 
 		hartip_hdr_t *p_reqHdr = &p_request->hipHdr;
 		hartip_hdr_t *p_rspHdr = &p_response->hipHdr;
@@ -820,8 +820,8 @@ static errVal_t handle_token_passing_req(hartip_msg_t *p_request, uint8_t sessNu
 
 			/* Start with a clean slate */
 			AppMsg txMsg;
-			memset(&txMsg, 0, APP_MSG_SIZE);
-			memcpy(txMsg.pdu, p_request->hipTPPDU, sizeof(p_request->hipTPPDU));
+			memset_s(&txMsg, APP_MSG_SIZE, 0);
+			memcpy_s(txMsg.pdu, TPPDU_MAX_FRAMELEN, p_request->hipTPPDU, sizeof(p_request->hipTPPDU));
 			txMsg.transaction = (sessNum << 16);
 			txMsg.transaction += hsMsg.message.hipHdr.seqNum; // client # + HART-IP sequence number
 
@@ -976,7 +976,7 @@ static errVal_t parse_client_req(uint8_t *p_reqBuff, ssize_t lenPdu,
 		}
 
 		/* Start with a clean slate */
-		memset(p_parsedReq, 0, sizeof(*p_parsedReq));
+		memset_s(p_parsedReq, sizeof(*p_parsedReq), 0);
 
 		hartip_hdr_t *p_clientMsgHdr = &p_parsedReq->hipHdr;
 
@@ -1049,7 +1049,7 @@ static errVal_t parse_client_req(uint8_t *p_reqBuff, ssize_t lenPdu,
 
 		if (payloadLen > 0)
 		{
-			memcpy(p_parsedReq->hipTPPDU, &p_reqBuff[HARTIP_HEADER_LEN],
+			memcpy_s(p_parsedReq->hipTPPDU, TPPDU_MAX_FRAMELEN, &p_reqBuff[HARTIP_HEADER_LEN],
 					payloadLen);
 		}
 	} while (FALSE);
@@ -1119,7 +1119,7 @@ static errVal_t wait_for_client_req(uint8_t *p_reqBuff, ssize_t *p_lenPdu,
 			}  // select()
 
 			socklen_t socklen = sizeof(*p_client_sockaddr);
-			memset(p_client_sockaddr, 0, socklen);
+			memset_s(p_client_sockaddr, socklen, 0);
 
 			*p_lenPdu = recvfrom(pCurrentSession->server_sockfd, p_reqBuff,
 			HARTIP_MAX_PYLD_LEN, 0, (struct sockaddr *) p_client_sockaddr,

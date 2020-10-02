@@ -49,6 +49,10 @@
 #include "hssubscribe.h"
 #include "serverstate.h"
 
+#include <string>
+
+#include "safe_lib.h"
+
 /************
  *  Globals
  ************/
@@ -99,12 +103,13 @@ static errVal_t handle_control_msg_from_app(AppMsg *p_rxMsg)
     { // #6005
       // APP has responded to INIT_APP_CMD
       eAppState = APP_READY;
-      int initPduLength = strlen((char *)p_rxMsg->pdu);
+      int initPduLength = strnlen_s((char *)p_rxMsg->pdu, TPPDU_MAX_FRAMELEN);
       char cConnectionType[2] = {'\0'};
-      char appName[100] = {'\0'};
+      const int maxAppNameSize = 100;
+      char appName[maxAppNameSize] = {'\0'};
       cConnectionType[0] = (p_rxMsg->pdu[initPduLength-1]);
       connectionType = strtol(cConnectionType,NULL,10);
-      memcpy(appName, p_rxMsg->pdu, (initPduLength-1));
+      memcpy_s(appName, maxAppNameSize, p_rxMsg->pdu, (initPduLength-1));
       dbgp_log("Connected to: %s\n", appName);
       ++appRecdMsgCount;
       break;
@@ -162,8 +167,9 @@ static errVal_t handle_device_msg_from_app(AppMsg *p_rxMsg)
   const char *funcName = "handle_device_msg_from_app";
   dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
 
-  dbgp_logdbg("\nServer processing msg recd from APP  %6d \n",
-      ++appRecdMsgCount);
+  //dbgp_logdbg("\nServer processing msg recd from APP  %6d \n", appRecdMsgCount);
+
+  appRecdMsgCount++;
 
   errVal_t errval = NO_ERROR;
   sem_wait(p_semServerTables);  // lock server tables when available
@@ -184,7 +190,7 @@ static errVal_t handle_device_msg_from_app(AppMsg *p_rxMsg)
       if (tppdu.IsBACK())
       { // BACK - distribute response to all subscribed clients
 
-        memcpy(hsmsg.message.hipTPPDU, p_rxMsg->pdu,
+        memcpy_s(hsmsg.message.hipTPPDU, TPPDU_MAX_FRAMELEN, p_rxMsg->pdu,
             sizeof(hsmsg.message.hipTPPDU));
         hsmsg.message.hipHdr.version = HARTIP_PROTOCOL_VERSION;
         hsmsg.message.hipHdr.status = 0;
@@ -206,7 +212,7 @@ static errVal_t handle_device_msg_from_app(AppMsg *p_rxMsg)
         else
         {
 
-    	  memcpy(hsmsg.message.hipTPPDU, p_rxMsg->pdu, sizeof(hsmsg.message.hipTPPDU));
+    	  memcpy_s(hsmsg.message.hipTPPDU, TPPDU_MAX_FRAMELEN, p_rxMsg->pdu, sizeof(hsmsg.message.hipTPPDU));
           hsmsg.message.hipHdr.version = HARTIP_PROTOCOL_VERSION;
           hsmsg.message.hipHdr.status = 0;
           hsmsg.message.hipHdr.msgType = HARTIP_MSG_TYPE_RESPONSE;
@@ -252,7 +258,7 @@ static void processRxQueue()
   do
   {
     AppMsg rxMsg;
-    memset(&rxMsg, 0, sizeof(rxMsg));
+    memset_s(&rxMsg, sizeof(rxMsg), 0);
 
     errval = rcv_msg_from_Q(rspQueue, &rxMsg, MQUEUE_NONBLOCKING);
 

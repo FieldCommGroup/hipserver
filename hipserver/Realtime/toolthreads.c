@@ -96,9 +96,9 @@ void delete_threads(void)
         }
         else
         {
-          print_to_both(p_toolLogPtr,
-              "Error in pthread_cancel() for %s!! \n",
-              (char *) thrName);
+          //print_to_both(p_toolLogPtr,
+          //    "Error in pthread_cancel() for %s!! \n",
+          //    (char *) thrName);
         }
       } // if (thrID != NULL)
     } /* for */

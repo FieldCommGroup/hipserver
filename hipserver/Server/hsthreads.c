@@ -178,7 +178,7 @@ errVal_t do_hs_setup(void)
 		struct AppMsg msg;
 		msg.command = INIT_APP_CMD;
 		msg.transaction = 0;
-		memset(msg.pdu, 0, TPPDU_MAX_FRAMELEN);
+		memset_s(msg.pdu, TPPDU_MAX_FRAMELEN, 0);
 		errval = snd_msg_to_app(&msg);
 
 		eServerState = SRVR_READY;	// open for business!
