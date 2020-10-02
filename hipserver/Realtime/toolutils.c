@@ -40,7 +40,8 @@
 #include "toolsems.h"
 #include "toolthreads.h"
 #include "toolutils.h"
-
+#include "safe_lib.h"
+#include "snprintf_s.h"
 
 /************
  *  Globals
@@ -105,7 +106,7 @@ errVal_t open_logfile(FILE **pp_filePtr, char *p_fileName)
     fprintf(stderr, "\n----------------------------------\n");
     fprintf(stderr, "  Opening %s...\n", p_fileName);
 #endif
-    *pp_filePtr = fopen(p_fileName, "w");
+    *pp_filePtr = fopen(p_fileName, "w"); // filename is string constant in calling func
     if (*pp_filePtr == NULL)
     {
       *pp_filePtr = stderr;
@@ -146,7 +147,7 @@ errVal_t open_toolLog(void)
   if (p_toolLogPtr == NULL)
   {
     /* Log does not exist yet */
-    strcat(TOOLLOG_NAME, "_log.txt");
+    strcat_s(TOOLLOG_NAME, sizeof(TOOLLOG_NAME), "_log.txt");
     errval = open_logfile(&p_toolLogPtr, TOOLLOG_NAME);
   } /* if (p_toolLogPtr == NULL) */
   else
@@ -178,17 +179,19 @@ void print_hexbytes(uint8_t *bytes, uint8_t numBytes, FILE *fptr)
 }
 
 
+
 void print_to_both(FILE *p_log, const char *format, ...)
 {
   /* Format the data and print it both to the log and the screen */
   va_list args;
   va_start(args, format);
 
-  char buffer[1024];
-  memset(buffer, 0, sizeof(buffer));
-  vsnprintf(buffer, 1024, format, args);
+  const int bufsize = 1024;
+  char buffer[bufsize];
+  memset_s(buffer, sizeof(buffer), 0);
+  vsnprintf(buffer, bufsize, format, args);
 
-  if (strlen(buffer) > 0)
+  if (strnlen_s(buffer, bufsize) > 0)
   {
     if (p_log == NULL)
     {
@@ -217,11 +220,12 @@ void print_to_log(FILE *p_filePtr, const char *format, ...)
 	  va_list args;
 	  va_start(args, format);
 
-	  char buffer[1024];
-	  memset(buffer, 0, sizeof(buffer));
-	  vsnprintf(buffer, 1024, format, args);
+    const int bufsize = 1024;
+	  char buffer[bufsize];
+	  memset_s(buffer, bufsize, 0);
+	  vsnprintf(buffer, bufsize, format, args);
 
-	  if (strlen(buffer) > 0)
+	  if (strnlen_s(buffer, bufsize) > 0)
 	  {
 	    if (p_filePtr == NULL)
 	    {

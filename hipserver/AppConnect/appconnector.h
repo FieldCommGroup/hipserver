@@ -28,6 +28,9 @@
 #ifndef _APPCONNECTOR_H
 #define _APPCONNECTOR_H
 
+#include "safe_lib.h"
+#include "sprintf_s.h"
+
 #ifdef INC_DEBUG
 #pragma message("In AppConnector.h") 
 #endif
@@ -373,22 +376,22 @@ errVal_t AppConnector<PDU_CLASS>::openMQs(void)
 
     int32_t mqFlag = QOPEN_FLAG_RDONLY;
     /* Use APP.REQ to receive messages from Server in the APP...our recv queue */
-    char mqName[80];
-    make_mq_name(QNAME_REQ, instance, mqName);
-    errval = open_mqueue(&rxQueue, mqName, mqFlag, APP_MSG_SIZE, MAX_QUEUE_LEN);
+    string mqName;
+    mqName = make_mq_name(QNAME_REQ, instance);
+    errval = open_mqueue(&rxQueue, (char *) mqName.c_str(), mqFlag, APP_MSG_SIZE, MAX_QUEUE_LEN);
     if (errval != NO_ERROR)  // double negative, we have an error
     {
-      dbgp_log("Error opening rx queue (%s)\n", mqName);
+      dbgp_log("Error opening rx queue (%s)\n", mqName.c_str());
       break;
     }
 
     mqFlag = QOPEN_FLAG_WRONLY;
     /* Use APP.RSP to send msg from APP to Server - our xmit queue */
-    make_mq_name(QNAME_RSP, instance, mqName);
-    errval = open_mqueue(&txQueue, mqName, mqFlag, APP_MSG_SIZE, MAX_QUEUE_LEN);
+    mqName = make_mq_name(QNAME_RSP, instance);
+    errval = open_mqueue(&txQueue, (char *) mqName.c_str(), mqFlag, APP_MSG_SIZE, MAX_QUEUE_LEN);
     if (errval != NO_ERROR)
     {
-      dbgp_log("Error opening tx queue (%s)\n", mqName);
+      dbgp_log("Error opening tx queue (%s)\n", mqName.c_str());
 
       if (mq_close(rxQueue) == NO_ERROR)
       {
@@ -463,8 +466,9 @@ int AppConnector<PDU_CLASS>::waitMessage(void)
       }
       else
       {
-        char buf[1000] = "APP RECV ";
-        strcat(buf, pPdu->ToHex());
+        const int bufsiz = 1000;
+        char buf[bufsiz] = "APP RECV ";
+        strcat_s(buf, bufsiz, pPdu->ToHex());
         dbgp_init("%s\n", buf);
       }
     }
@@ -557,10 +561,12 @@ int AppConnector<PDU_CLASS>::processMessage(App *pApp) // message is in p_Pdu->b
     if (pApp->ready() == NO_ERROR) // if we are ready to run
     { // #6005
       // the response pdu of for the INIT_APP_CMD contains the application name
-      char temp[10] = {'\0'};
-      sprintf(temp,"%d",pApp->GetConnectionType());
-      strcpy((char*) (pPdu->pdu), pApp->GetName());
-      strcat((char*) (pPdu->pdu), temp);
+	  const int siz = 10;
+	  char temp[siz] = { '\0' };
+	  sprintf_s(temp, siz, "%d", pApp->GetConnectionType());
+      strcpy_s((char*) (pPdu->pdu), TPPDU_MAX_FRAMELEN, pApp->GetName());
+      strcat_s((char*) (pPdu->pdu), TPPDU_MAX_FRAMELEN, temp);
+
       sendMessage(); // send response back
     }
     // else do not return the message - server should timeout

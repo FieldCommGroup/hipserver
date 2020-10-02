@@ -32,10 +32,11 @@ DIR_HSRVR = $(shell cd ..; pwd)
 DIR_APPC = $(DIR_HSRVR)/AppConnect
 DIR_COMN = $(DIR_HSRVR)/Common
 DIR_RLTM = $(DIR_HSRVR)/Realtime
+DIR_SAFE = $(DIR_HSRVR)/safestringlib
 # subdir DIR_SRVR is already defined at top
 
 # Leave RHS blank if no subdirs to be built
-SUBDIRS_HSRVR = $(DIR_APPC) $(DIR_COMN) $(DIR_RLTM) $(DIR_SRVR)
+SUBDIRS_HSRVR = $(DIR_APPC) $(DIR_COMN) $(DIR_RLTM) $(DIR_SRVR) $(DIR_SAFE)
 hsrvr_children = 
 
 # include the various Makefile.inc files in the directory
@@ -56,20 +57,27 @@ EXEC_TOP  = all
 
 $(EXEC_TOP): $(COMMON_OBJS)
 	$(ECHO)
+	cd ../safestringlib && $(MAKE)
+	cd ..
+	$(ECHO)
 	$(ECHO) Building $(EXEC_TOP)
 	$(ECHO)
 	$(LD) $(CFLAGS) -o $(EXEC_NAME) $(OBJS_ALL) $(INCL_LIBS)
 	$(ECHO)
 
+
 # ===============================================================
 
 .PHONY: clean
 clean:
+
 	$(ECHO)
 	$(RM) -f $(EXEC_NAME)      >  /dev/null 2>&1
 	$(RM) -f *.gch             >  /dev/null 2>&1
 	$(RM) -f *.o               >  /dev/null 2>&1
 	@-for d in $(SUBDIRS_HSRVR); do ( echo Cleaning $$d; cd $$d; rm -f *.o; echo ); done
+	cd ../safestringlib && $(MAKE) clean
+	cd ..
 		
 .PHONY: cleanall
 cleanall:

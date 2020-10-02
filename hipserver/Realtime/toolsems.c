@@ -35,6 +35,8 @@
 #include "toolsems.h"
 #include "toolutils.h"
 
+#include "safe_lib.h"
+
 /************
  *  Globals
  ************/

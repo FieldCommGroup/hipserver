@@ -45,6 +45,9 @@
 
 #include "serverstate.h"
 
+#include "safe_lib.h"
+#include "snprintf_s.h"
+
 enum ServerState eServerState = SRVR_INIT;
 enum AppState eAppState = APP_STOP;
 enum AppLaunch eAppLaunch = LNCH_MANUAL;
@@ -165,11 +168,11 @@ uint8_t process_command_line(int argc, char* argv[])
 
   for (i; i < argc; i++)
   {
-    strcat(AppCommandLine, argv[i]);
-    strcat(AppCommandLine, " ");
+    strcat_s(AppCommandLine, sizeof(AppCommandLine), argv[i]);
+    strcat_s(AppCommandLine, sizeof(AppCommandLine), " ");
   }
 
-  if (strlen(AppCommandLine)+1 > sizeof(AppCommandLine))
+  if (strnlen_s(AppCommandLine, sizeof(AppCommandLine))+1 > sizeof(AppCommandLine))
   {
     printf("Command line arguments are too large\n");
     exit(1);
@@ -362,7 +365,7 @@ int32_t main(int argc, char *argv[])
   uint8_t errval = process_command_line(argc, argv);
 
   eServerState = SRVR_INIT;
-  if (strlen(AppCommandLine) > 0)
+  if (strnlen_s(AppCommandLine, sizeof(AppCommandLine)) > 0)
   {
     // a command line for the APP is provided
     eAppLaunch = LNCH_AUTO;  // server will launch APP automatically

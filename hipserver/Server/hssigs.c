@@ -176,7 +176,7 @@ static void sighandler_hs_endall(int32_t sigNum)
 		struct AppMsg msg;
 		msg.command = TERM_APP_CMD;
 		msg.transaction = 0;
-		memset(msg.pdu, 0, TPPDU_MAX_FRAMELEN);
+		memset_s(msg.pdu, TPPDU_MAX_FRAMELEN, 0);
 		snd_msg_to_app(&msg);
 		dbgp_logdbg("TERM_APP_CMD sent, not awaiting response...\n");
 	}

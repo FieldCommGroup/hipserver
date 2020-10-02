@@ -107,7 +107,7 @@ request_table_status_t find_request_in_table(int transaction, hsmessage_t *resul
 {
 	request_table_status_t status = RTS_EOF;
 
-	assert(result);
+	assert(result); // no side effect
 
 	if (request_table.find(transaction) != request_table.end())
 	{

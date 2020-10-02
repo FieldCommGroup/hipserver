@@ -26,6 +26,8 @@
 #include "tppdu.h"
 #include <string.h>
 #include <stdio.h>
+#include "toolutils.h"
+
 
 
 TpPdu::TpPdu(TpPduStore &store)
@@ -63,8 +65,8 @@ bool TpPdu::AddressMatch(const uint8_t *a)
   int len = AddressLen();
   uint8_t buf1[TPHDR_ADDRLEN_UNIQ];
   uint8_t buf2[TPHDR_ADDRLEN_UNIQ];
-  memcpy(buf1, Address(), len);
-  memcpy(buf2, a, len);
+  memcpy_s(buf1, TPHDR_ADDRLEN_UNIQ, Address(), len);
+  memcpy_s(buf2, TPHDR_ADDRLEN_UNIQ, a, len);
 
   //// mask off primary master bit
   //buf1[0] &= 0x7f;
@@ -294,7 +296,7 @@ void TpPdu::ProcessErrResponse(uint8_t rc)
 
   /* Build Response PDU in temp buffer, then copy to pPDU */
   uint8_t  rspBuff[TPPDU_MAX_FRAMELEN];
-  memset(rspBuff, 0, TPPDU_MAX_FRAMELEN);
+  memset_s(rspBuff, TPPDU_MAX_FRAMELEN, 0);
 
   /* Set response bytes starting with the Delimiter */
   uint16_t index = TP_OFFSET_DELIM; // Byte 0 of TP PDU
@@ -303,7 +305,7 @@ void TpPdu::ProcessErrResponse(uint8_t rc)
   /* Set Long Frame Address */
   uint8_t addrLen = TPHDR_ADDRLEN_UNIQ;
   index += TPHDR_DELIMLEN;
-  memcpy(&rspBuff[index], &pPDU[index], addrLen);
+  memcpy_s(&rspBuff[index], addrLen, &pPDU[index], addrLen);
 
   /* Apply bit masks for Master Address and Burst Mode (sometimes,
    * the Master may have these bits set wrong). Only Primary Master
@@ -358,14 +360,14 @@ void TpPdu::ProcessErrResponse(uint8_t rc)
   rspBuff[index++] = CheckSum(rspBuff, index);
 
   // save completed response PDU
-  memcpy(pPDU, rspBuff, index);
+  memcpy_s(pPDU, TPPDU_MAX_FRAMELEN, rspBuff, index);
 }
 
 void TpPdu::ProcessOkResponse(uint8_t rc, uint8_t *data, uint8_t datalen)
 {
 	uint8_t bc = ByteCount() + datalen;
 	ProcessOkResponse(rc, bc);
-	memcpy(ResponseBytes(), data, datalen);
+	memcpy_s(ResponseBytes(), TPPDU_MAX_FRAMELEN, data, datalen);
 	SetCheckSum();
 }
 
@@ -376,7 +378,7 @@ void TpPdu::ProcessOkResponse(uint8_t rc, uint8_t bc)
 
   /* Build Response PDU in temp buffer, then copy to pPDU */
   uint8_t  rspBuff[TPPDU_MAX_FRAMELEN];
-  memset(rspBuff, 0, TPPDU_MAX_FRAMELEN);
+  memset_s(rspBuff, TPPDU_MAX_FRAMELEN, 0);
 
   /* Set response bytes starting with the Delimiter */
   uint16_t index = TP_OFFSET_DELIM;                   // Byte 0 of TP PDU
@@ -392,7 +394,7 @@ void TpPdu::ProcessOkResponse(uint8_t rc, uint8_t bc)
   /* Set Long or Short Frame Address */
   uint8_t addrLen = highbit ? TPHDR_ADDRLEN_UNIQ : TPHDR_ADDRLEN_POLL;
   index += TPHDR_DELIMLEN;
-  memcpy(&rspBuff[index], &pPDU[index], addrLen);
+  memcpy_s(&rspBuff[index], addrLen, &pPDU[index], addrLen);
 
   /* Apply bit masks for Master Address and Burst Mode (sometimes,
    * the Master may have these bits set wrong). Only Primary Master
@@ -423,13 +425,13 @@ void TpPdu::ProcessOkResponse(uint8_t rc, uint8_t bc)
   rspBuff[index++] = STATUS_OK;
 
   // copy all data bytes, including exp cmd #
-  memcpy(&rspBuff[index], DataBytes(), rspLen);
+  memcpy_s(&rspBuff[index], TPPDU_MAX_DATALEN, DataBytes(), rspLen);
 
   index += rspLen;
   rspBuff[index++] = CheckSum(rspBuff, index);
 
   // save completed response PDU
-  memcpy(pPDU, rspBuff, index);
+  memcpy_s(pPDU, TPPDU_MAX_FRAMELEN, rspBuff, index);
 }
 
 /*
@@ -461,7 +463,7 @@ void TpPdu::AddData(uint8_t *addData, uint8_t addedBytes)
 	}
 
 	tempBuff[index++] = CheckSum(tempBuff, index);
-	memcpy(pPDU, tempBuff, index);
+	memcpy_s(pPDU, TPPDU_MAX_FRAMELEN, tempBuff, index);
 }
 
 uint8_t TpPdu::CheckSum(uint8_t *p, uint8_t plen)
@@ -512,16 +514,17 @@ bool TpPdu::Validate(uint8_t requestBC)
 
 char *TpPdu::ToHex()
 {
-	static char buf[2000];
-	memset(buf, 0, 2000);
+  const int bufsiz = 2000;
+	static char buf[bufsiz];
+	memset_s(buf, bufsiz, 0);
 
-  const int bufsiz = 10;
-	char byteval[bufsiz];
+  const int bytevalsiz = 10;
+	char byteval[bytevalsiz];
 	int len = PduLength() + 1;
 	for (int i = 0; i < len; i++)
 	{
-		snprintf(byteval, bufsiz, "%02X ", pPDU[i]);
-		strcat(buf, byteval);
+		sprintf_s(byteval, bytevalsiz, "%02X ", pPDU[i]);
+		strcat_s(buf, bufsiz, byteval);
 	}
 	return buf;
 }
@@ -630,10 +633,10 @@ void InitAppPdu::ProcessOkResponse(char *label)
 
 	// put label into 80 byte buffer, padded with nulls
 	uint8_t buf[TPPDU_INIT_LABEL_SIZE];
-	memset(buf, 0, TPPDU_INIT_LABEL_SIZE);
+	memset_s(buf, TPPDU_INIT_LABEL_SIZE, 0);
 
 	// copy the label to be returned into the response bytes
-	memcpy(ResponseBytes(), label, strlen(label));
+	memcpy_s(ResponseBytes(), TPPDU_MAX_DATALEN, label, strnlen_s(label, 80));
 }
 
 // pick label out of response bytes

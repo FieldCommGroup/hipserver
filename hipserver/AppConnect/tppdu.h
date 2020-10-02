@@ -36,6 +36,7 @@
 
 #include "tpdll.h"
 #include "hartdefs.h"
+#include "safe_lib.h"
 
 #include <string.h>
 
@@ -61,7 +62,7 @@ public:
 	;
 	void SetStore(uint8_t *data)
 	{
-		memcpy(pdustore, (const void *) data, TPPDU_MAX_FRAMELEN);
+		memcpy_s(pdustore, TPPDU_MAX_FRAMELEN, (const void *) data, TPPDU_MAX_FRAMELEN);
 	}
 	;
 	uint8_t *Store()
