@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -101,9 +101,9 @@
  * TPDLL Header (8) + DataBytes (255) + CheckByte (1)
  * (8 hdr = 1 delim + 5 addr + 0 exp + 1 cmd + 1 byte count)
  */
-#define TPPDU_MAX_FRAMELEN       ( (TPPDU_MAX_HDRLEN   +   \
+#define TPPDU_MAX_FRAMELEN       (TPPDU_MAX_HDRLEN   +   \
                                   TPPDU_MAX_DATALEN  +   \
-                                  TPPDU_MAX_CHECKSUMLEN))
+                                  TPPDU_MAX_CHECKSUMLEN)
 
 
 /* Values of the sub-fields of the TPDLL Delimiter */

@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -170,7 +170,7 @@ uint8_t process_command_line(int argc, char* argv[])
   {
     strcat_s(AppCommandLine, sizeof(AppCommandLine), argv[i]);
     strcat_s(AppCommandLine, sizeof(AppCommandLine), " ");
-  }
+  } // #689
 
   if (strnlen_s(AppCommandLine, sizeof(AppCommandLine))+1 > sizeof(AppCommandLine))
   {

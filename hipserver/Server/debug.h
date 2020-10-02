@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@
 #include "toolutils.h"     /* for p_toolLogPtr */
 
 /* Direct all stdout to stderr for unbuffered printing */
-#define printf(format, a...)     fprintf(stderr, format, ## a)
+#define printf(format, a...)     fprintf(stderr, format, ## a); fflush(stderr)
 
 // define DEBUG_MODE to enable extra output to console
 //#define DEBUG_MODE

@@ -1,5 +1,5 @@
 #*************************************************************************************************
-# Copyright 2019 FieldComm Group, Inc.
+# Copyright 2020 FieldComm Group, Inc.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,12 +65,10 @@ $(EXEC_TOP): $(COMMON_OBJS)
 	$(LD) $(CFLAGS) -o $(EXEC_NAME) $(OBJS_ALL) $(INCL_LIBS)
 	$(ECHO)
 
-
 # ===============================================================
 
 .PHONY: clean
 clean:
-
 	$(ECHO)
 	$(RM) -f $(EXEC_NAME)      >  /dev/null 2>&1
 	$(RM) -f *.gch             >  /dev/null 2>&1

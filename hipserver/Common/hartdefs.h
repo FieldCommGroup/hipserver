@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,6 +79,9 @@
 #define RC_DR_DEAD               ((uint8_t)35)
 #define RC_DR_CONFL              ((uint8_t)36)
 #define RC_NOT_IMPLEM            ((uint8_t)64)
+
+#define RC_UNDEFINED           ((uint8_t)255) /* Useful for init/err chking */
+
 
 /* HART other defs */
 #define HART_NOT_CLASFD			 ((uint8_t)0)

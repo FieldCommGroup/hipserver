@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,8 +68,8 @@ void delete_threads(void)
   /* Avoid repeated deletion via different means */
   if (count)
   {
-	dbgp_init("\n**********************\n");
-	dbgp_logdbg("Deleting %s threads...\n", TOOL_NAME);
+    dbgp_init("\n**********************\n");
+    dbgp_logdbg("Deleting %s threads...\n", TOOL_NAME);
 
     for (n = 0; n < count; n++)
     {
@@ -94,8 +94,7 @@ void delete_threads(void)
                 (char *) thrName);
           }
         }
-        // else nothing
-
+	 // else nothing to delete
       } // if (thrID != NULL)
     } /* for */
     dbgp_logdbg("Total %d threads deleted\n", n);

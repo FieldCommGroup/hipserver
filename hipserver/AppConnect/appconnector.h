@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,9 @@
 
 #define ever   (;;)
 
+#ifdef _FLOWAPP
 extern uint32_t GetTickCount(void);
+#endif
 
 #ifdef _DEBUG
 extern double rt(void);
@@ -90,20 +92,22 @@ private:
   mqd_t rxQueue; // server-to-APP Q
   mqd_t txQueue; // APP-to-server Q
 
+#ifdef _FLOWAPP
   // hart has a requirement to keep comm statistics: 16 bit, volatile, rollsover
   uint16_t stxCnt;
   uint16_t ackCnt;
   uint16_t bakCnt;
   uint16_t sndCnt;// mainly to keep alignment;
+#endif
 
   /* there can only be one interface so statics make sense */
-  static bool time2stop;  // abortAPP will set this via signal user2 that breaks the mq_receive
+  static bool time2stop; // abortAPP will set this via signal user2 that breaks the mq_receive
   static void abort_handler(int signo);
 
 public:
   AppConnector();
   virtual ~AppConnector();
-	
+
   // two step instantiation:  
   //    new AppConnector();  
   //    then, when the app is ready to run, call run(pApp);
@@ -163,6 +167,8 @@ public:
     return queuesOpen;
   }
   ;
+  
+#ifdef _FLOWAPP
   void incStx() { stxCnt++; };// this needs to be done outside this class
 
   // hart has a requirement to keep comm statistics: 16 bit, volatile, rollsover
@@ -171,6 +177,7 @@ public:
 	  stxs = stxCnt; acks = ackCnt; baks = bakCnt;
 	  return sndCnt;
   };
+#endif
 
 protected:
   /* helper functions */
@@ -194,7 +201,12 @@ void AppConnector<PDU_CLASS>::abort_handler(int signo)
 }
 
 template<class PDU_CLASS>
+#ifdef _FLOWAPP
 AppConnector<PDU_CLASS>::AppConnector() : stxCnt(0),ackCnt(0),bakCnt(0), sndCnt(0)
+#else
+AppConnector<PDU_CLASS>::AppConnector()
+#endif
+
 {										  
   /*									  
    * any error in this constructor is fatal and causes immediate exit
@@ -304,10 +316,13 @@ void AppConnector<PDU_CLASS>::sendBurstMsg(PDU_CLASS *pBurst) /* this may be cal
   thisT = rt();
   int dbg = APP_MSG_SIZE;
 #endif
+
+#ifdef _FLOWAPP
   if (pPdu->IsACK()) ackCnt++;// error when you're bursting an ack
   if (pPdu->IsBACK())bakCnt++;
 
   sndCnt++;
+#endif
 
   int status = mq_send(txQueue, (char*) &(pBurst->command), APP_MSG_SIZE, 0);
 
@@ -535,10 +550,7 @@ int AppConnector<PDU_CLASS>::processMessage(App *pApp) // message is in p_Pdu->b
   {
     if (  (ret = pApp->handleMessage(&usersPduClass)) == NO_ERROR  )
     {
-#ifdef _DEBUG
-     // printf("TRANSMIT----------|");
-     // pPdu->printMsg();// stevev 18mar2019 - changed from p_Pdu to pPdu
-#endif
+
       sendMessage(); // send same message back
 
       // if response is a short frame command 0, then learn the address
@@ -610,10 +622,13 @@ int AppConnector<PDU_CLASS>::sendMessage()
   struct mq_attr mqstat;
   mq_getattr(txQueue, &mqstat);
 #endif
+
+#ifdef _FLOWAPP
 	if (pPdu->IsACK()) ackCnt++;
 	if (pPdu->IsBACK())bakCnt++;
 
 	sndCnt++;
+#endif
 
 	status = mq_send(txQueue, (char*) &(pPdu->command), APP_MSG_SIZE, 0);
 
