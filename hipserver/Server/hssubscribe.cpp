@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -424,8 +424,8 @@ bool is_attached(const uint8_t *a)
     TpPdu record(*itr);
 
     const int len = 5;
-    uint8_t buf1[5];
-    uint8_t buf2[5];
+    uint8_t buf1[len];
+    uint8_t buf2[len];
     memcpy_s(buf1, len, record.Address(), len);
     memcpy_s(buf2, len, a, len);
     int x = memcmp(buf1, buf2, len );

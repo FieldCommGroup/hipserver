@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ sem_t *p_semEndAll; /* sync main() with Main Thread */
  ************************************/
 static sem_info_t htoolSems[MAX_SEMS]; /* array of all semaphores */
 static uint8_t numSems = 0; /* total number of sems used */
+char semCont[MAX_SEMS][SEM_NAME_SIZE];
 
 /**********************************************
  *  Private function prototypes for this file
@@ -72,7 +73,11 @@ errVal_t create_semaphores(uint8_t createFlag)
     /* Create/open all generic synchronization semaphores */
     initVal = (createFlag ? SEMTAKEN : SEMIGN);
 
-    p_semEndAll = open_a_semaphore("semEndAll", createFlag, initVal);
+	// #191
+	char semEnd[SEM_NAME_SIZE] = "semEndAll";
+
+	createUniqueName(semEnd);
+    p_semEndAll = open_a_semaphore(semEnd, createFlag, initVal);
     if (p_semEndAll)
     {
       errVal = NO_ERROR;  // success
@@ -93,6 +98,7 @@ void delete_semaphores(void)
   dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
 
   /* Avoid repeated deletion via different means */
+  // #191
   if (count)
   {
     dbgp_init("\n**********************\n");
@@ -104,17 +110,17 @@ void delete_semaphores(void)
 
       if (p_sem != NULL)
       {
-        if (remove_sem(p_sem, semName) == LINUX_ERROR)
+        if (remove_sem(p_sem, semCont[count-n]) == LINUX_ERROR)
         {
           fprintf(p_toolLogPtr, "Error %d deleting semaphore %s!!\n",
-          errno, semName);
+          errno, semCont[count-n]);
         }
         else
         {
           /* Reset pointer to prevent accidental misuse */
           htoolSems[count - n].p_sem = NULL;
           numSems--;
-          dbgp_sem("  ..%s\n", semName);
+          dbgp_sem("  ..%s\n", semCont[count-n]);
         }
       } // if (p_sem != NULL)
     } /* for */
@@ -177,6 +183,7 @@ sem_t *open_a_semaphore(const char *semName, uint8_t createFlag,
     /* Save semaphore info in the array */
     htoolSems[numSems].p_sem = p_sem;
     htoolSems[numSems].semName = semName;
+    strcpy_s(semCont[numSems], SEM_NAME_SIZE, semName);
     numSems++;
     dbgp_sem("Created semaphore #%d (%s)\n", numSems, semName);
   }
@@ -222,3 +229,10 @@ static errVal_t remove_sem(sem_t *p_sem, const char *semName)
   return (errVal);
 }
 
+// #191
+void *createUniqueName(char* semName)
+{
+	char tempName[SEM_NAME_SIZE] = "";
+	sprintf(tempName,"%d",getpid());
+	strcat(semName,tempName);
+}

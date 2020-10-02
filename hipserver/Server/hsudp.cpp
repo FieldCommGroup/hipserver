@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1040,6 +1040,7 @@ static errVal_t parse_client_req(uint8_t *p_reqBuff, ssize_t lenPdu,
 		uint16_t payloadLen = (p_clientMsgHdr->byteCount) -
 		HARTIP_HEADER_LEN;
 
+		// #689		
 		if (payloadLen > TPPDU_MAX_FRAMELEN - HARTIP_HEADER_LEN)
 		{
 			print_to_both(p_toolLogPtr, "HARTIP buffer overflow!\n");

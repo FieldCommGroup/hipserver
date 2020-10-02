@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,15 +73,20 @@ errVal_t create_hs_semaphores(uint8_t createFlag)
 		{
 			break;
 		}
+		// #191
+		char semStop[SEM_NAME_SIZE] = "semStopMainThr";
+		char semServ[SEM_NAME_SIZE] = "semServerTables";
+		createUniqueName(semStop);
 
-		p_semStopMainThr = open_a_semaphore("semStopMainThr", createFlag,
+		p_semStopMainThr = open_a_semaphore(semStop, createFlag,
 				initVal);
 		if (p_semStopMainThr == NULL)
 		{
 			break;
 		}
 
-		p_semServerTables = open_a_semaphore("semServerTables", createFlag,
+		createUniqueName(semServ);
+		p_semServerTables = open_a_semaphore(semServ, createFlag,
 				initVal);
 		if (p_semServerTables == NULL)
 		{

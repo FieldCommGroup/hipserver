@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,11 +111,13 @@ int highest_instance_number()
 	return highest;
 }
 
-string make_mq_name(const char *basename, char *instance)
+string make_mq_name(const char *basename, char *instance )
 {
   string u = "_";
   string s = basename + u + instance;
   return s;
+
+
 }
 
 /*****************************
@@ -160,8 +162,12 @@ void close_mqueues(void)
           {
             // this means MQs already closed, no need to report
           }
-
-          dbgp_logdbg("  ..%s\n", (char * )qName);
+          else
+          {
+            // Keeping this line outside 'else' prints weird chars in log
+            // (Fixed by VG)
+            dbgp_logdbg("  ..%s\n", (char * )qName);
+          }
         } // if (mq_close(mqDesc) == NO_ERROR)
         else
         {
@@ -209,9 +215,8 @@ void open_appcom(bool isServer, char *instance)
 			print_to_both(p_toolLogPtr, "Cannot read the realtime clock.  Exiting...\n");
 			exit(1);
 		}
-
-    const char *format = "%08x";		
-    sprintf_s(instance, COM_MSGSIZE, format, ((unsigned) ts.tv_sec));	// seconds since the epoch)
+  		const char *format = "%08x";		
+    		sprintf_s(instance, COM_MSGSIZE, format, ((unsigned) ts.tv_sec));	// seconds since the epoch)
 	}
 	// else APP will call this with create = false
 
@@ -282,11 +287,11 @@ errVal_t create_mqueues(mqueue_usage_t usage)
     {
 		mqFlag |= QOPEN_FLAG_CREATE;
 
-    	open_appcom(true, instance);
+		open_appcom(true, instance);
     }
 
     /* Use RSP to send msg to Server */
- //   char mqName[80];
+
     string mqName = make_mq_name(QNAME_RSP, instance);
     errval = open_mqueue(&rspQueue, (char*) mqName.c_str(), mqFlag,
     APP_MSG_SIZE, MAX_QUEUE_LEN);
@@ -479,9 +484,7 @@ errVal_t open_mqueue(mqd_t *p_mqDesc, char *mqName, int32_t qFlag,
     char msgBuff[APP_MSG_SIZE + 100]; // large enough
     memset_s(msgBuff, sizeof(msgBuff), 0);
 
-//  BYTE *buf = (BYTE *) malloc(msgsize);
-//  if (buf)
-//  {
+
       do
       {
         errval = rcv_msg_from_Q(*p_mqDesc, msgBuff, MQUEUE_NONBLOCKING);
@@ -503,8 +506,7 @@ errVal_t open_mqueue(mqd_t *p_mqDesc, char *mqName, int32_t qFlag,
           break;
         }
       } while (true);
-//    free(buf);
-//  }
+
   }
 
   return errval;

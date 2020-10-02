@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ typedef enum
   COMM_ERROR,
   CRC_ERROR,
   DEVID_ERROR,
+  EMPTY_ERROR,
   FATAL_ERROR,
   FILE_ERROR,
   FRAME_ERROR,
@@ -60,6 +61,7 @@ typedef enum
   LICENSE_ERROR,
   MALLOC_ERROR,
   MIC_ERROR,
+  MISMATCH_ERROR,
   MQ_INVALID_PARAM_ERROR,
   MQ_INCONSISTENT_MSG_ERROR,
   MQ_EOF,	/* no message found in non-blocking read */
@@ -67,6 +69,7 @@ typedef enum
   MSG_ID_ERROR,
   MSG_TYPE_ERROR,
   NOMSGRCD_ERROR,
+  NONCE_ERROR,
   NWK_ERROR,
   OVERFLOW_ERROR,
   PARAM_ERROR,
@@ -96,6 +99,7 @@ typedef enum
   VALIDATION_ERROR,
   VERSION_ERROR,
   WRITE_ERROR,
+  XMIT_ERROR,
 
   MISC_ERROR = 0xFF      /* Keep this at end */
 

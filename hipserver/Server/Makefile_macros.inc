@@ -1,5 +1,5 @@
 #*************************************************************************************************
-# Copyright 2019 FieldComm Group, Inc.
+# Copyright 2020 FieldComm Group, Inc.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,6 +30,6 @@ CFLAGS     = -g -DLINUX -I. -I../Common  -I../Realtime  -I../AppConnect  -I../sa
 CXXFLAGS   = -g -DLINUX -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
 ECHO       = @echo
 INCL_LIBS  = -lpthread -lrt   ../safestringlib/libsafestring.a
-LD         = g++ 
+LD         = g++
 RM         = @rm
 

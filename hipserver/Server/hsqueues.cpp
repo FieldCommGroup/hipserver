@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -166,10 +166,10 @@ static errVal_t handle_device_msg_from_app(AppMsg *p_rxMsg)
 {
   const char *funcName = "handle_device_msg_from_app";
   dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-  //dbgp_logdbg("\nServer processing msg recd from APP  %6d \n", appRecdMsgCount);
-
   appRecdMsgCount++;
+  dbgp_logdbg("\nServer processing msg recd from APP  %6d \n", appRecdMsgCount);
+
+
 
   errVal_t errval = NO_ERROR;
   sem_wait(p_semServerTables);  // lock server tables when available

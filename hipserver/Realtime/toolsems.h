@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ typedef struct sem_info_struct
 #define SEMTAKEN      0    /* Initial value for a locked semaphore */
 
 #define MAX_SEMS      50   /* Should suffice for now */
+#define SEM_NAME_SIZE 100
 
 /************
  *  Globals
@@ -69,6 +70,7 @@ uint8_t get_sem_name(sem_t *p_sem, char *semName);
 sem_t *open_a_semaphore(const char *semName, uint8_t createFlag,
 		uint8_t initVal);
 int sem_wait_nointr(sem_t *sem);
+void *createUniqueName(char*);
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,19 +100,19 @@ void  AppPdu::msg2Ack(char frameType)
 }
 void AppPdu::setBurstModeInAddr(bool isBursting)
 {
-	uint8_t M = (isBursting) ? 0x40 : 0x00;
+	uint8_t M = (isBursting) ? TPPOLL_FDEV_BURST_MASK : 0x00;
 	pdu[1] = (pdu[1] & 0xbF) | M;
 }
 
 void AppPdu::setMasterAddr( bool isPrimary )
 {
-	uint8_t M = (isPrimary)? 0x80 : 0x00;
+	uint8_t M = (isPrimary)? TPPOLL_PRIM_MASTER_MASK : 0x00;
 	longAddr[0] = pdu[1] = (pdu[1] & 0x7F) | M;
 }
 
 bool AppPdu::isPrimary()
 {
-	return ((pdu[1] & 0x80) != 0 );
+	return ((pdu[1] & TPPOLL_PRIM_MASTER_MASK) != 0 );
 }
 
 /* set up the pdu with delim and address */

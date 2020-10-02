@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2019 FieldComm Group, Inc.
+ * Copyright 2020 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -177,7 +177,6 @@ void print_hexbytes(uint8_t *bytes, uint8_t numBytes, FILE *fptr)
     fprintf(fptr, "\n");
   }
 }
-
 
 
 void print_to_both(FILE *p_log, const char *format, ...)
