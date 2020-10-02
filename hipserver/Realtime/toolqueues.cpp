@@ -111,7 +111,7 @@ int highest_instance_number()
 	return highest;
 }
 
-string make_mq_name(const char *basename, char *instance /*, char *fname*/)
+string make_mq_name(const char *basename, char *instance)
 {
   string u = "_";
   string s = basename + u + instance;
