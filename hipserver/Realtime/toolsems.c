@@ -133,6 +133,22 @@ uint8_t get_sem_count(void)
   return (numSems);
 }
 
+/* This should be deleted once sem_wait_gdb is examined! */
+uint8_t get_sem_name(sem_t *p_sem, char *semName)
+{
+  uint8_t n, found = FALSE;
+
+  for (n = 0; n < numSems; n++)
+  {
+    if (p_sem == htoolSems[n].p_sem)
+    {
+      strcpy(semName, htoolSems[n].semName);
+      found = TRUE;
+      break;
+    }
+  }
+  return (found);
+}
 
 sem_t *open_a_semaphore(const char *semName, uint8_t createFlag,
     uint8_t initVal)

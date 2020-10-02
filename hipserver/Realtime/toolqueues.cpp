@@ -116,8 +116,6 @@ string make_mq_name(const char *basename, char *instance /*, char *fname*/)
   string u = "_";
   string s = basename + u + instance;
   return s;
-
-//	sprintf(fname, "%s_%s", basename, instance);
 }
 
 /*****************************

@@ -65,6 +65,7 @@ extern "C" {
 errVal_t create_semaphores(uint8_t createFlag);
 void delete_semaphores(void);
 uint8_t get_sem_count(void);
+uint8_t get_sem_name(sem_t *p_sem, char *semName);
 sem_t *open_a_semaphore(const char *semName, uint8_t createFlag,
 		uint8_t initVal);
 int sem_wait_nointr(sem_t *sem);
