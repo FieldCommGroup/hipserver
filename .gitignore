@@ -32,3 +32,5 @@
 *.app
 *.ipch
 /.vs
+
+hipserver/safestringlib/out/build/x64-Debug/

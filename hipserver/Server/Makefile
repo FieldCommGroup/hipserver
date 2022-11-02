@@ -1,5 +1,5 @@
 #*************************************************************************************************
-# Copyright 2020 FieldComm Group, Inc.
+# Copyright 2019-2021 FieldComm Group, Inc.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ DIR_APPC = $(DIR_HSRVR)/AppConnect
 DIR_COMN = $(DIR_HSRVR)/Common
 DIR_RLTM = $(DIR_HSRVR)/Realtime
 DIR_SAFE = $(DIR_HSRVR)/safestringlib
+DIR_SERVER = $(DIR_HSRVR)/Server
 # subdir DIR_SRVR is already defined at top
 
 # Leave RHS blank if no subdirs to be built
@@ -82,3 +83,13 @@ cleanall:
 	@$(MAKE) -s clean
 	$(ECHO)
 
+.PHONY: test_basic
+test_basic: $(COMMON_OBJS)
+	$(ECHO)
+	cd ../safestringlib && $(MAKE)
+	cd ..
+	$(ECHO)
+	$(ECHO) Building $(EXEC_TOP)
+	$(ECHO)
+	$(LD) $(CFLAGS) -DTestBasic -o $(EXEC_NAME).TestBasic $(OBJS_ALL) $(INCL_LIBS)
+	$(ECHO)

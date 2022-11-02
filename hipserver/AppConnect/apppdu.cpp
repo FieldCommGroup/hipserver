@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ int AppPdu::evalMsg()
 }
 
 /* make the addressed packet into an ACK */
-void  AppPdu::msg2Ack(char frameType)
+void  AppPdu::msg2Ack(char frameType, bool isburst)
 {
 	if ( frameType == TPDELIM_FRAME_STX ) 
 	{
@@ -96,7 +96,14 @@ void  AppPdu::msg2Ack(char frameType)
 		*Delim() |= TPDELIM_FRAME_PSK_ACK;
 	}
 
-	*Address() &= (unsigned char)(~TPPOLL_FDEV_BURST_MASK);
+	if (isburst)
+	{
+		*Address() |= (unsigned char) TPPOLL_FDEV_BURST_MASK;
+	}
+	else
+	{
+		*Address() &= (unsigned char)(~TPPOLL_FDEV_BURST_MASK);
+	}
 }
 void AppPdu::setBurstModeInAddr(bool isBursting)
 {

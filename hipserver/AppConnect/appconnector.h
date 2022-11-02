@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -548,15 +548,24 @@ int AppConnector<PDU_CLASS>::processMessage(App *pApp) // message is in p_Pdu->b
   {
   case HART_APP_CMD:
   {
-    if (  (ret = pApp->handleMessage(&usersPduClass)) == NO_ERROR  )
-    {
 
-      sendMessage(); // send same message back
+	// #29
+	ret = pApp->handleMessage(&usersPduClass);
 
-      // if response is a short frame command 0, then learn the address
-      // NOTE: this behavior may not be appropriate for an IO
-      pPdu->learnAddress();
-    }
+	if ( (ret == NO_ERROR) || (ret == COMM_ERROR) )
+	{
+
+	  sendMessage(); // send same message back
+
+	  // if response is a short frame command 0, then learn the address
+	  // NOTE: this behavior may not be appropriate for an IO
+	  if(ret == NO_ERROR)
+	  {
+		  pPdu->learnAddress();
+	  }
+
+	  ret = ALL_IS_WELL;
+	}
 	else
 	if (ret == FATAL_ERROR)   // already defined in errVal_t
 	{
@@ -566,6 +575,7 @@ int AppConnector<PDU_CLASS>::processMessage(App *pApp) // message is in p_Pdu->b
 	{// ignore everything else - note TJ.20may19 - said to discard all errors except fatal
 		ret = ALL_IS_WELL;
 	}
+
   }
     break;
   case INIT_APP_CMD:

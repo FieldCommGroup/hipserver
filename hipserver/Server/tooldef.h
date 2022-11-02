@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 #define _TOOLDEF_H
 
 
-#define HIP_VERS        "3.7"    /* Current version of HART-IP */
+#define HIP_VERS        "3.17"    /* Current version of HART-IP */
 #define TOOL_NAME      "hipserver"   /* The HART-IP server interface */
 #define TOOL_VERS      HIP_VERS
 

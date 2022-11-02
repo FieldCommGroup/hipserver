@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 
 #include "appmsg.h"
 #include "tpdll.h"
+#include "netinet/in.h"
 
 /****************
  *  Definitions
@@ -54,15 +55,22 @@
                                     HARTIPHDR_SEQNUM_LEN   +    \
                                     HARTIPHDR_BYTECOUNT_LEN)
 
-/* Max length (in bytes) of the HART-IP pass-through payload */
-#define HARTIP_MAX_PYLD_LEN        TPPDU_MAX_FRAMELEN
+#define HARTIP_MAX_PYLD_DPDU_LEN 258
+#define HARTIP_DPDU_STATUS_LEN 2
+
+/* Max length (in bytes) of the HART-IP pass-through payload 
+ * DPDU (258Byte max) x 4 +2Byte = 1034 byte
+ */
+#define HARTIP_MAX_PYLD_LEN ( (HARTIP_MAX_PYLD_DPDU_LEN * 4) + \
+                              HARTIP_DPDU_STATUS_LEN )
 
 /* Max length (in bytes) of a HART-IP msg 
  *
- * Msg Length (272 bytes)
- * HART-IP Header (8) + Payload (264)
+ * Msg Length (1042 bytes)
+ * HART-IP Header (8) + Payload (1034)
  * (8 hdr = 1 vers + 1 msgType + 1 msgId + 1 status + 2 seqNum + 2 byteCount)
- * (264 = token-passing msg frame/HART-IP pass-through payload length)
+ * (258 = direct-passing msg frame/HART-IP pass-through payload length) * number
+ * (2Byte status information)
  */
 #define HARTIP_MAX_MSG_LEN         (HARTIP_HEADER_LEN  +   \
                                     HARTIP_MAX_PYLD_LEN)
@@ -80,50 +88,74 @@
  *************/
 typedef enum
 {
-	/* Values per Spec 85, do not alter! */
-	HARTIP_MSG_TYPE_REQUEST = 0,
-	HARTIP_MSG_TYPE_RESPONSE = 1,
-	HARTIP_MSG_TYPE_PUBLISH = 2,
-	HARTIP_MSG_TYPE_NAK = 15
+  /* Values per Spec 85, do not alter! */
+  HARTIP_MSG_TYPE_REQUEST = 0,
+  HARTIP_MSG_TYPE_RESPONSE = 1,
+  HARTIP_MSG_TYPE_PUBLISH = 2,
+  HARTIP_MSG_TYPE_NAK = 15
 } HARTIP_MSG_TYPE;
 
 typedef enum
 {
-	/* Values per Spec 85, do not alter! */
-	HARTIP_MSG_ID_SESS_INIT = 0,
-	HARTIP_MSG_ID_SESS_CLOSE = 1,
-	HARTIP_MSG_ID_KEEPALIVE = 2,
-	HARTIP_MSG_ID_TP_PDU = 3,
-	HARTIP_MSG_ID_DISCOVERY = 128
+  /* Values per Spec 85, do not alter! */
+  HARTIP_MSG_ID_SESS_INIT = 0,
+  HARTIP_MSG_ID_SESS_CLOSE = 1,
+  HARTIP_MSG_ID_KEEPALIVE = 2,
+  HARTIP_MSG_ID_TP_PDU = 3,
+  HARTIP_MSG_ID_DM_PDU = 4,
+  HARTIP_MSG_ID_READ_AUDIT = 5,
+  HARTIP_MSG_ID_DISCOVERY = 128
 } HARTIP_MSG_ID;
 
 typedef enum
 {
-	/* Values per Spec 85, do not alter! */
-	HARTIP_SESS_ERR_INVALID_MASTER_TYPE = 2,
-	HARTIP_SESS_ERR_TOO_FEW_BYTES = 5,
-	HARTIP_SESS_ERR_VERSION_NOT_SUPPORTED = 14,
-	HARTIP_SESS_ERR_SESSION_NOT_AVLBL = 15,
-	HARTIP_SESS_ERR_SESSION_EXISTS = 16
+  /* Values per Spec 85, do not alter! */
+  HARTIP_SESS_ERR_INVALID_MASTER_TYPE = 2,
+  HARTIP_SESS_ERR_TOO_FEW_BYTES = 5,
+  HARTIP_SESS_ERR_TOO_FEW_TIME = 8,
+  HARTIP_SESS_ERR_SECURITY_NOT_INITIALIZED = 9,
+  HARTIP_SESS_ERR_VERSION_NOT_SUPPORTED = 14,
+  HARTIP_SESS_ERR_SESSION_NOT_AVLBL = 15,
+  HARTIP_SESS_ERR_SESSION_EXISTS = 16
 } HARTIP_SESSION_ERROR_TYPE;
 
 /* HART-IP Message Header - From Spec 85 */
 typedef struct hartip_hdr_struct
 {
-	uint8_t version;
-	HARTIP_MSG_TYPE msgType;
-	HARTIP_MSG_ID msgID;
-	uint8_t status;
-	uint16_t seqNum;
-	uint16_t byteCount;
+  uint8_t version;
+  HARTIP_MSG_TYPE msgType;
+  HARTIP_MSG_ID msgID;
+  uint8_t status;
+  uint16_t seqNum;
+  uint16_t byteCount;
 } hartip_hdr_t;
 
 /* HART-IP Message - From Spec 85 */
 typedef struct hartip_msg_struct
 {
-	hartip_hdr_t hipHdr;
-	uint8_t hipTPPDU[TPPDU_MAX_FRAMELEN];	//was HARTIP_MAX_PYLD_LEN
+  hartip_hdr_t hipHdr;
+  uint8_t hipTPPDU[HARTIP_MAX_PYLD_LEN];	//was HARTIP_MAX_PYLD_LEN
 } hartip_msg_t;
+
+/*************
+ *  Typedefs
+ *************/
+typedef struct sockaddr_in sockaddr_in_t;
+typedef struct sockaddr_in6 sockaddr_in6_t;
+
+/* Session structure to keep track of clients (for multi-session
+ * scalability)
+ */
+typedef struct _hartip_session_
+{
+  uint8_t id;
+  uint8_t sessNum;         // uniquely identifies a session with a client
+  int32_t server_sockfd;   // server's socket handle
+  sockaddr_in_t clientAddr;      // client  vv
+  uint16_t seqNumber;       // current sequence number
+  timer_t idInactTimer;    // the inactivity timer
+  uint32_t msInactTimer;    // timer value
+} hartip_session_t;
 
 #endif /* _HSTYPES_H */
 

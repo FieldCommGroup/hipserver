@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@
 #define _HSTHREADS_H
 
 #include <pthread.h>
+#include "tcpprocessor.h"
+#include "hsudp.h"
 #include "errval.h"
 
 /*************

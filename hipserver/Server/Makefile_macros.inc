@@ -1,5 +1,5 @@
 #*************************************************************************************************
-# Copyright 2020 FieldComm Group, Inc.
+# Copyright 2019-2021 FieldComm Group, Inc.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,13 +23,22 @@
 #*
 #**********************************************************
 
+CRYPTO_LIB_SWITCH =
+CRYPTO_FLAGS = 
+CRYPTO_INCL = 
 
-CC        = g++ -c
-CXX        = g++ -c
-CFLAGS     = -g -DLINUX -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
-CXXFLAGS   = -g -DLINUX -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
+ifeq ($(CRYPTO_LIB_SWITCH), openssl)
+CRYPTO_FLAGS = -DOPEN_SSL_SUPPORT
+CRYPTO_INCL = -lssl -lcrypto
+endif
+
+
+CC        = g++ -c -std=c++11
+CXX        = g++ -c -std=c++11
+CFLAGS     = -g -DLINUX $(CRYPTO_FLAGS) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
+CXXFLAGS   = -g -DLINUX $(CRYPTO_FLAGS) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
 ECHO       = @echo
-INCL_LIBS  = -lpthread -lrt   ../safestringlib/libsafestring.a
+INCL_LIBS  = -L/usr/lib $(CRYPTO_INCL) -lpthread -lrt -lssl -lcrypto -ljsoncpp  ../safestringlib/libsafestring.a
 LD         = g++
 RM         = @rm
 

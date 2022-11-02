@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -501,8 +501,8 @@ errVal_t open_mqueue(mqd_t *p_mqDesc, char *mqName, int32_t qFlag,
         }
         else if (errval != NO_ERROR)
         {
-          print_to_both(p_toolLogPtr,
-                        "Failed to receive msg from APP\n");
+          //print_to_both(p_toolLogPtr,
+          //              "Failed to receive msg from APP\n");
           break;
         }
       } while (true);

@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,10 +36,10 @@
 #include "tooldef.h"
 #include "tppdu.h"
 #include "hsthreads.h"
-#include "hsudp.h"
 #include "hsutils.h"
 #include "serverstate.h"
 #include "hsrequest.h"
+#include "hsnetworkmanager.h"
 
 /************
  *  Globals
@@ -95,15 +95,7 @@ static errVal_t initialize_hs(void)
 
 	do
 	{
-		/* Create HServer sockets */
-		errval = create_socket();
-
-		if (errval != NO_ERROR)
-		{
-			fprintf(p_hsLogPtr, "Socket could not be created\n");
-			break;
-		}
-
+		//errval = create_tcp_socket();
 		/* Create HServer-APP queues */
 		errval = create_mqueues(MQUSAGE_SERVER);	// server owns queues
 		if (errval != NO_ERROR)
@@ -234,14 +226,12 @@ static errVal_t create_hs_threads(void)
 		hsThrCounter++;
 		dbgp_thr("   Created (#%d) %s\n", hsThrCounter, popRxThrName);
 
-		/* Thread to process HServer socket communication */
-		errval = start_a_thread(&socketThrID, socketThrFunc, socketThrName);
-		if (errval != NO_ERROR)
+		errval = NetworkManager::Instance()->CreateDefaultProcessor();
+		if(errval != NO_ERROR)
 		{
-			fprintf(p_hsLogPtr, "Error Creating %s\n", socketThrName);
 			break;
 		}
-		hsThrCounter++;
+
 		dbgp_thr("   Created (#%d) %s\n", hsThrCounter, socketThrName);
 
 		/* Thread to run APP program */

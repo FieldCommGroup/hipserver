@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,57 +34,36 @@
 #include <list>
 #include <string.h>
 #include <time.h>
+#include "hssyslogger.h"
 #include <toolsems.h>
 
 #include "tppdu.h"
-
 #include "hsmessage.h"
 #include "hssubscribe.h"
+#include "hsauditlog.h"
 
+#include "debug.h"
 
 /************
  *  Globals
  ************/
 
+enum SubFlags
+{
+    PROCESS_DATA=0x1,
+    EVENT_NOTIFICATION=0x2,
+    DEVICE_STATUS=0x4,
+    DEVICE_CONFIG=0x8,
+    WIRELESS_NETWORK_STATS=0x100,
+    WIRELESS_HEALTH=0x200,
+	DEVICE_SPECIFIC_COMMANDS=0x8000
+	};
 
 /**********************************************
  *  Private class for this file
  **********************************************/
 
 // Subscription commands 532+533 common
-class SubscriptionPdu : public TpPdu
-{
-public:
-    enum SubFlags {
-      PROCESS_DATA=0x1,
-      EVENT_NOTIFICATION=0x2,
-      DEVICE_STATUS=0x4,
-      DEVICE_CONFIG=0x8,
-      WIRELESS_NETWORK_STATS=0x100,
-      WIRELESS_HEALTH=0x200
-    };
-    bool IsBroadcastAddress();
-    uint8_t *TargetUniqID();
-    uint16_t SubscriptionFlags();
-    void SetSubscriptionFlags(uint16_t flags);  // 532 only
-
-    SubscriptionPdu(uint8_t *data) : TpPdu(data) {};
-};
-
-
-class Subscription
-{
-public:
-//    sockaddr_in_t clientAddr;             // client address
-    uint8_t sessNum;                      // session number
-    uint8_t UniqueID[TPHDR_ADDRLEN_UNIQ]; // device address
-    uint16_t flags;
-
-    bool AddressMatch(uint8_t *address);
-    void SetAddress(const uint8_t *address);
-    bool IsBroadcastAddress();
-};
-
 
 bool SubscriptionPdu::IsBroadcastAddress()
 {
@@ -166,52 +145,7 @@ static std::list<TpPduStore> devtable;
  *  Private functions for this file
  **********************************************/
 
-
-// discard records for all devices subscribed to by client
-static void discard_all_subscriptions(uint8_t sessNum)
-{
-  for (std::list<Subscription>::iterator itr = subtable.begin(); itr != subtable.end(); /*nothing*/)
-  {
-    Subscription record = *itr;
-    if (sessNum == record.sessNum)
-    {
-      itr = subtable.erase(itr);
-    }
-    else
-      ++itr;
-  }
-}
-
-// discard records for client subscribed to particular device
-static void discard_all_subscriptions(uint8_t sessNum, const uint8_t *devAddr)
-{
-  for (std::list<Subscription>::iterator itr = subtable.begin(); itr != subtable.end(); /*nothing*/)
-  {
-    Subscription record = *itr;
-    if (sessNum == record.sessNum && record.AddressMatch((uint8_t *)devAddr))
-    {
-      itr = subtable.erase(itr);
-    }
-    else
-      ++itr;
-  }
-}
-
 // return record found for this client+address
-static Subscription *find_subscription(uint8_t sessNum, const uint8_t *devAddr)
-{
-  for (std::list<Subscription>::iterator itr = subtable.begin(); itr != subtable.end(); itr++)
-  {
-    Subscription record = *itr;
-    bool admatch = (record.AddressMatch((uint8_t *)devAddr) || record.IsBroadcastAddress());
-    if (sessNum == record.sessNum && admatch)
-    {
-      return &(*itr);
-    }
-  }
-  return NULL;
-}
-
 static void print_unique_id(uint8_t *id)
 {
   for (int i=0; i<5; i++)
@@ -243,157 +177,13 @@ static void print_subscription_table(char *msg, uint8_t *id, uint16_t flags)
   printf("\n");
 }
 
-static void add_subscription(hsmessage_t *hsmsg)
-{
-  Subscription record;
-  record.sessNum = hsmsg->pSession->sessNum;
-  SubscriptionPdu subpdu(hsmsg->message.hipTPPDU);
-  record.SetAddress(subpdu.TargetUniqID());
-  record.flags = subpdu.SubscriptionFlags();
-
-  if (find_subscription(record.sessNum, record.UniqueID) == NULL)
-  {
-    subtable.push_back(record);
-  }
-  // else record for this device already exists
-}
-
-
 
 /**********************************************
  *  Public functions for this file
  **********************************************/
 
 // add a subscription, return 533 response
-subscription_table_status_t process_cmd533(hsmessage_t *hsmsg)
-{
-	const uint8_t bc = 11;  // byte count for success response
-	SubscriptionPdu subpdu(hsmsg->message.hipTPPDU);
 
-	if (subpdu.Validate(7))
-	{
-	if (subpdu.IsBroadcastAddress())
-	{
-	  // broadcast and device subscriptions may not co-exist
-	  discard_all_subscriptions(hsmsg->pSession->sessNum);
-
-	  if (subpdu.SubscriptionFlags() != 0)
-	  {
-		add_subscription(hsmsg);
-	  }
-	  // else no records ==> cancels all subscriptions for this client
-
-	  subpdu.ProcessOkResponse(RC_SUCCESS, bc);
-	}
-	else
-	{// request has specific device address
-
-	  // find first record for this client in subscription table
-	  Subscription *subscription = find_subscription(hsmsg->pSession->sessNum, subpdu.TargetUniqID());
-
-	  if (subscription)
-	  { // found
-		if (subscription->IsBroadcastAddress())
-		{
-		  // can't replace a broadcast subscription with a single device subscription
-		  subpdu.ProcessErrResponse(9);  // RC=Individual Subscription Not Allowed
-		}
-		else
-		{
-		  // we only have ONE device attached as we are not an IO device
-		  discard_all_subscriptions(hsmsg->pSession->sessNum, subpdu.TargetUniqID());
-		  if (subpdu.SubscriptionFlags())
-		  {
-			add_subscription(hsmsg);
-		  }
-		  // else don't add a record for flags=0000 b/c no record means no subscription
-
-		  subpdu.ProcessOkResponse(RC_SUCCESS, bc);
-		}
-	  }
-	  else
-	  { // no record is found in subscription table for this client
-		if (is_attached(subpdu.TargetUniqID()))
-		{ // we are adding a subscription for a device that is attached
-		  add_subscription(hsmsg);
-		  subpdu.ProcessOkResponse(RC_SUCCESS, bc);
-		}
-		else
-		{// the device that is being subscribed is not attached
-		  subpdu.ProcessErrResponse(65);  // RC=Unknown unique ID
-		}
-	  }
-	}
-	}
-	// else error processing for invalid command is complete
-#if (DEBUG_SUB)
-	print_subscription_table((char*)"Add a subscription: ", subpdu.TargetUniqID(), subpdu.SubscriptionFlags());
-#endif
-	return STS_OK;
-}
-
-
-// find a subscription, return 532 response in PDU
-subscription_table_status_t process_cmd532(hsmessage_t *hsmsg)
-{
-	const uint8_t bc = 11;  // byte count for success response
-	SubscriptionPdu findme(hsmsg->message.hipTPPDU); // subscription we are searching for
-
-	if (findme.Validate(5))
-	{
-	// find first subscription in table matching client and target unique ID
-	Subscription *subscription = find_subscription(hsmsg->pSession->sessNum, findme.TargetUniqID());
-
-	if (subscription)
-	{
-	  if (subscription->IsBroadcastAddress() && findme.IsBroadcastAddress()==false)
-	  {
-		// can't look up specific device when a broadcast subscription is in place
-		findme.ProcessErrResponse(9);  // RC=Individual Subscription Not Allowed
-	  }
-	  else
-	  {
-		// update the subscription flags in the PDU that is returned to the client
-		findme.SetSubscriptionFlags(subscription->flags);
-		findme.ProcessOkResponse(RC_SUCCESS, bc);
-	  }
-	}
-	else
-	{ // no subscription matches the 532 request
-	  if(findme.IsBroadcastAddress())
-	  {
-		// we are looking for a broadcast address in an empty table
-		findme.ProcessErrResponse(65); // RC=Unknown unique ID
-	  }
-	  else
-	  {
-		// we are looking for a device address
-		findme.ProcessErrResponse(65); // RC=Target Unique ID must be Broadcast Address 
-	  }
-	}
-	}
-	// else error processing for invalid command is complete
-
-
-	return STS_OK;          // request is copied into table
-}
-
-// forward pdu from rspQueue to subscribed clients
-void send_burst_to_subscribers(hartip_msg_t *p_response)
-{
-	TpPdu tppdu(p_response->hipTPPDU);
-	for (std::list<Subscription>::iterator itr = subtable.begin(); itr != subtable.end(); /*nothing*/)
-	{
-		Subscription record = *itr;
-		if (record.IsBroadcastAddress() || tppdu.AddressMatch(record.UniqueID))
-		{
-			send_burst_to_client(p_response, record.sessNum); // manages seq#
-		}
-
-		++itr;
-	}
-
-}
 
 /*
  * p points to a response PDU. if the PDU is a command 0 response and a matching PDU
@@ -401,15 +191,29 @@ void send_burst_to_subscribers(hartip_msg_t *p_response)
  */
 void attach_device(uint8_t *p)
 {
-	TpPdu cmd(p);
-	if (p  &&  cmd.IsLongFrame()  &&  cmd.IsACK()  &&  cmd.CmdNum() == 0  &&  cmd.ResponseCode() == 0)
-	{
-		if (is_attached((uint8_t *)cmd.Address()) == false)
-		{
-			TpPduStore saveme(p);
-			devtable.push_back(saveme);
-		}
-	}
+  TpPdu cmd(p);
+  if (p  &&  cmd.IsLongFrame()  &&  cmd.IsACK()  &&  cmd.CmdNum() == 0  &&  cmd.ResponseCode() == 0)
+  {
+    if (is_attached((uint8_t *)cmd.Address()) == false)
+    {
+      TpPduStore saveme(p);
+      devtable.push_back(saveme);
+    }
+  }
+}
+
+/*
+ * p points to a PDU. if the address of PDU is exist do nothing,
+ * otherwise the PDU will be added to the table of attached devices.
+ */
+void attach_device_by_address(uint8_t *p)
+{
+    TpPdu cmd(p);
+    if (is_attached((uint8_t *)cmd.Address()) == false)
+    {
+        TpPduStore saveme(p);
+        devtable.push_back(saveme);
+    }
 }
 
 
@@ -448,4 +252,290 @@ void clear_attached_devices()
   int n = devtable.size();
   devtable.clear();
   n = devtable.size();
+}
+
+SubscribesTable::SubscribesTable()
+{
+}
+
+SubscribesTable::~SubscribesTable()
+{
+}
+
+SubscribesTable* SubscribesTable::Instance()
+{
+  static SubscribesTable table;
+  return &table;
+}
+
+void SubscribesTable::AddSubscriber(IResponseSender* sender, SubscriptionPdu& subpdu)
+{
+  Subscription subs;
+  subs.sender = sender;
+  subs.SetAddress(subpdu.TargetUniqID());
+  subs.flags = subpdu.SubscriptionFlags();
+
+  SubscriptionFlagsUnion subFlagsUnion;
+  subFlagsUnion.i = subs.flags;
+  subs.subFlags = subFlagsUnion.b;
+
+  {
+    MutexScopeLock lock(m_mutex);
+    m_subscribersTable.push_back(subs);
+  }
+}
+
+void SubscribesTable::RemoveSubscriber(IResponseSender* sender)
+{
+  MutexScopeLock lock(m_mutex);
+  bool found = false;
+  do
+  {
+      found = false;
+      for(int i = 0; i < m_subscribersTable.size(); ++i)
+      {
+          if(sender == m_subscribersTable[i].sender)
+          {
+              m_subscribersTable.erase(m_subscribersTable.begin() + i);
+              found = true;
+              break;
+          }
+      }
+  }
+  while (found);
+}
+
+void SubscribesTable::RemoveSubscriber(IResponseSender* sender, uint8_t *address)
+{
+  MutexScopeLock lock(m_mutex);
+  for(int i = 0; i < m_subscribersTable.size(); ++i)
+  {
+    if(sender == m_subscribersTable[i].sender && m_subscribersTable[i].AddressMatch(address))
+    {
+      m_subscribersTable.erase(m_subscribersTable.begin() + i);
+      break;
+    }
+  }
+}
+
+errVal_t SubscribesTable::SendResponse(hartip_msg_t *p_response)
+{
+  MutexScopeLock lock(m_mutex);
+  TpPdu tppdu(p_response->hipTPPDU);
+  for(int i = 0; i < m_subscribersTable.size(); ++i)
+  {
+    if(IsNeedSend(&tppdu, m_subscribersTable[i].subFlags) == TRUE)
+    {
+      p_response->hipHdr.seqNum = m_subscribersTable[i].sender->GetSession()->NextSequnce();
+      m_subscribersTable[i].sender->SendResponse(p_response);
+      AuditLogger->UpdateBackCounter(m_subscribersTable[i].sender->GetSession());
+    }
+  }
+}
+
+subscription_table_status_t SubscribesTable::HandleCommand532(IResponseSender* sender, TpPdu* tppdu)
+{
+  const uint8_t bc = 11;
+
+  SubscriptionPdu findme(tppdu->GetPdu()); // subscription we are searching for
+  IResponseSender* tsender = sender->GetParentSender();
+  tsender = tsender == NULL ? sender : tsender;
+
+  if (findme.Validate(5))
+  {
+    // find first subscription in table matching client and target unique ID
+    Subscription *subscription = FindSubscriber(tsender, findme.TargetUniqID());
+    if (subscription)
+    {
+      if (subscription->IsBroadcastAddress() && findme.IsBroadcastAddress()==false)
+      {
+        // can't look up specific device when a broadcast subscription is in place
+        findme.ProcessErrResponse(9);  // RC=Individual Subscription Not Allowed
+      }
+      else
+      {
+        // update the subscription flags in the PDU that is returned to the client
+        findme.SetSubscriptionFlags(subscription->flags);
+        findme.ProcessOkResponse(RC_SUCCESS, bc);
+      }
+    }
+    else
+    {
+        if(false == findme.IsBroadcastAddress())
+        {
+            // check requested uniqueID is ower own
+            bool b = is_attached(findme.TargetUniqID());
+            if ((b) && (SubscribedToBroadcast == true))
+            { // #133
+            	findme.ProcessErrResponse(RC_MULTIPLE_9);
+            }
+            else if (b)
+            {
+                findme.SetSubscriptionFlags(0);
+                findme.ProcessOkResponse(RC_SUCCESS, bc);
+            }
+            else
+            {
+                // it is not broadcast and not ower own
+                findme.ProcessErrResponse(65); // RC=Unknown unique ID
+            }
+        }
+        else
+        {
+            // we are looking for a broadcast address, no found but ok.
+            findme.SetSubscriptionFlags(0);
+            findme.ProcessOkResponse(RC_SUCCESS, bc);
+        }
+    }
+  }
+  findme.SetRCStatus(findme.ResponseCode(), tppdu->getSavedDevStatus()); // #165
+  findme.InsertCheckSum();
+}
+
+subscription_table_status_t SubscribesTable::HandleCommand533(IResponseSender *sender, TpPdu *tppdu)
+{
+  const uint8_t bc = 11;
+
+  SubscriptionPdu subpdu(tppdu->GetPdu());
+  IResponseSender* tsender = sender->GetParentSender();
+  tsender = tsender == NULL ? sender : tsender;
+
+  if (subpdu.Validate(7))
+  {
+    if (subpdu.IsBroadcastAddress())
+    {
+      // if (subpdu.SubscriptionFlags() == 0)
+      // {
+      //   RemoveSubscriber(tsender);
+      // }
+      // AddSubscriber(tsender, subpdu);
+
+      RemoveSubscriber(tsender);
+      if (subpdu.SubscriptionFlags() != 0)
+      {
+        AddSubscriber(tsender, subpdu);
+      }
+      subpdu.ProcessOkResponse(RC_SUCCESS, bc);
+    }
+    else
+    { // request has specific device address
+      // find first record for this client in subscription table
+      Subscription *subscription = FindSubscriber(tsender, subpdu.Address());
+      if (subscription)
+      { // found
+        if (subscription->IsBroadcastAddress())
+        {
+          // can't replace a broadcast subscription with a single device subscription
+          subpdu.ProcessErrResponse(9); // RC=Individual Subscription Not Allowed
+        }
+        else if (is_attached(subpdu.TargetUniqID()) == false)
+        { // #133
+        	subpdu.ProcessErrResponse(65);
+        }
+        else
+        {
+          // we only have ONE device attached as we are not an IO device
+          RemoveSubscriber(tsender);
+          if (subpdu.SubscriptionFlags() != 0)
+          {
+            AddSubscriber(tsender, subpdu);
+          }
+          subpdu.ProcessOkResponse(RC_SUCCESS, bc);
+        }
+      }
+      else
+      { // no record is found in subscription table for this client
+    	if(SubscribedToBroadcast == true)
+    	{ // #133
+    		subpdu.ProcessErrResponse(RC_MULTIPLE_9);
+    	}
+    	else if (is_attached(subpdu.TargetUniqID()))
+        { // we are adding a subscription for a device that is attached
+          AddSubscriber(tsender, subpdu);
+          subpdu.ProcessOkResponse(RC_SUCCESS, bc);
+        }
+        else
+        {                                // the device that is being subscribed is not attached
+          subpdu.ProcessErrResponse(65); // RC=Unknown unique ID
+        }
+      }
+    }
+  }
+  subpdu.SetRCStatus(subpdu.ResponseCode(), tppdu->getSavedDevStatus()); // #165
+  subpdu.InsertCheckSum();
+  // else error processing for invalid command is complete
+#if (DEBUG_SUB)
+  print_subscription_table((char *)"Add a subscription: ", subpdu.TargetUniqID(), subpdu.SubscriptionFlags());
+#endif
+  return STS_OK;
+}
+
+Subscription* SubscribesTable::FindSubscriber(IResponseSender* sender, uint8_t *address)
+{
+    SubscribedToBroadcast = false;
+    uint8_t brodcastAddr[] = {0x00,0x00,0x00,0x00,0x00};
+    int res = -1;
+    {
+        MutexScopeLock lock(m_mutex);
+        for (int i = 0; i < m_subscribersTable.size(); ++i)
+        {
+            if (m_subscribersTable[i].sender == sender && m_subscribersTable[i].AddressMatch(brodcastAddr))
+            { // #133
+            	SubscribedToBroadcast = true;
+            }
+
+            if (m_subscribersTable[i].sender == sender && m_subscribersTable[i].AddressMatch(address))
+            {
+                res = i;
+                break;
+            }
+        }
+    }
+    if (res != -1)
+    {
+        return &m_subscribersTable[res];
+    }
+    return NULL;
+}
+
+bool_t SubscribesTable::IsNeedSend(TpPdu *tppdu, SubscriptionFlags flags)
+{
+  const uint16_t command = tppdu->CmdNum();
+
+  // Added command checking for process data subscription flag
+  if(flags.processData == 1 && (command == 1 || command == 2 || command == 3 || command == 9 ))
+  {
+    return TRUE;
+  }
+
+  //corrected event notification command from 109 to 119
+  if(flags.eventNotification == 1 && command == 119)
+  {
+    return TRUE;
+  }
+  if(flags.deviceStatus == 1 && command == 48)
+  {
+    return TRUE;
+  }
+  if(flags.deviceConfiguration == 1 && command == 38)
+  {
+    return TRUE;
+  }
+  if(flags.wirelessNetworkStatistics == 1 && (command == 846))
+  {
+    return TRUE;
+  }
+  if(flags.wirelessHealth == 1 && (768 <= command && command <= 1023))
+  {
+    return TRUE;
+  }
+  if(flags.deviceSpecificCommands == 1 && ((128 <= command && command <= 253) 
+                                       || (64768 <= command && command <= 65023))
+                                       || (64512 <= command && command <= 64767) )
+  {
+    return TRUE;
+  }
+
+  return FALSE;
+
 }

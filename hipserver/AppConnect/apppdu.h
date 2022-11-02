@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ public: // Operations
 
 	virtual void clear();
 
-	virtual void msg2Ack(char frameType = TPDELIM_FRAME_STX);// turns the stx msg into an ack message
+	virtual void msg2Ack(char frameType = TPDELIM_FRAME_STX, bool isburst = false); // turns the stx msg into an ack message
 	virtual void setMasterAddr( bool isPrimary );
 	virtual void setBurstModeInAddr(bool isBursting);
 	virtual void setAPPCmd(uint32_t newCmd) { command = newCmd; };//app command...

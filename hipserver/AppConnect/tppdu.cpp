@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,9 @@
 #include "tppdu.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "toolutils.h"
-
+#include <netinet/in.h>
 
 
 TpPdu::TpPdu(TpPduStore &store)
@@ -140,18 +141,26 @@ uint8_t TpPdu::ResponseByteCount()
   return IsExpCmd() ?  (ByteCount() - 2 ) : ByteCount();
 }
 
+uint16_t TpPdu::CmdNum1Byte()
+{
+	int index = IsLongFrame() ? TP_OFFSET_CMD_UNIQ : TP_OFFSET_CMD_POLL;
+	uint32_t cmd = pPDU[index];
+	return cmd;
+}
+	
 uint16_t TpPdu::CmdNum()
 {
-  int index = IsLongFrame() ? TP_OFFSET_CMD_UNIQ : TP_OFFSET_CMD_POLL;
-  uint32_t cmd = pPDU[index];
+  uint32_t cmd = CmdNum1Byte();
+
   if (HART_CMD_EXP_FLAG == cmd)
   {
 	  int minbc = IsSTX() ? 0 : 2;
 
-	  if (ByteCount() > minbc)
+	  // #68
+	  if ((ByteCount() > minbc) && (ByteCount() > 1))
 	  {
 	    // get index of expanded cmd #
-	    index = IsLongFrame() ? TP_OFFSET_DATA_UNIQ : TP_OFFSET_DATA_POLL;
+	    int index = IsLongFrame() ? TP_OFFSET_DATA_UNIQ : TP_OFFSET_DATA_POLL;
 
 	    // correct it for RC+STATUS
 	    index = IsSTX() ? index : index+2;
@@ -179,8 +188,8 @@ void TpPdu::SetByteCount(uint8_t bc)
 {
   int bcindex = (IsLongFrame()) ?
       TP_OFFSET_BCOUNT_UNIQ : TP_OFFSET_BCOUNT_POLL;
-
-  pPDU[bcindex] = bc;
+	
+	pPDU[bcindex] = bc;
 }
 
 uint8_t TpPdu::ResponseCode()
@@ -232,7 +241,6 @@ uint8_t TpPdu::TotalLength()
 	//  BC is number of bytes in the DATA section
 
 	int bc = pPDU[bcindex];
-	bcindex += 1; // convert index to counting number (length thru BC)
 
 	// length thru byte count, + data + chcksum
 	int len = bcindex + bc + 1;// +1 (checksum)
@@ -300,11 +308,12 @@ void TpPdu::ProcessErrResponse(uint8_t rc)
 
   /* Set response bytes starting with the Delimiter */
   uint16_t index = TP_OFFSET_DELIM; // Byte 0 of TP PDU
-  rspBuff[index] = TPDELIM_ACK_UNIQ;
+  rspBuff[index] = IsLongFrame() ? TPDELIM_ACK_UNIQ : TPDELIM_ACK_POLL;
 
   /* Set Long Frame Address */
-  uint8_t addrLen = TPHDR_ADDRLEN_UNIQ;
+  uint8_t addrLen = IsLongFrame() ? TPHDR_ADDRLEN_UNIQ : TPHDR_ADDRLEN_POLL;
   index += TPHDR_DELIMLEN;
+  uint8_t reqByteCount = this->getReqByteCount();
   memcpy_s(&rspBuff[index], addrLen, &pPDU[index], addrLen);
 
   /* Apply bit masks for Master Address and Burst Mode (sometimes,
@@ -315,7 +324,7 @@ void TpPdu::ProcessErrResponse(uint8_t rc)
   rspBuff[index] &= (~TPPOLL_FDEV_BURST_MASK);
 
   /* Set Command Number */
-  uint8_t cmdNum = pPDU[TP_OFFSET_CMD_UNIQ];
+  uint8_t cmdNum = pPDU[IsLongFrame() ? TP_OFFSET_CMD_UNIQ : TP_OFFSET_CMD_POLL];
   index += addrLen;
   rspBuff[index] = cmdNum;
 
@@ -328,13 +337,13 @@ void TpPdu::ProcessErrResponse(uint8_t rc)
   bool_t is16BitCmd = FALSE;
   if (cmdNum == HART_CMD_EXP_FLAG)
   {
-    uint8_t reqBC = pPDU[TP_OFFSET_BCOUNT_UNIQ];
+    uint8_t reqBC = pPDU[IsLongFrame() ? TP_OFFSET_BCOUNT_UNIQ : TP_OFFSET_BCOUNT_POLL];
 
     /* A valid Expansion Flag Cmd has at least 2 data bytes
      * for the 16-bit command value.
      */
-    if (reqBC >= 2)
-    {
+    if (reqByteCount >= 2)
+    {  // #36
       rspLen += 2;
       is16BitCmd = TRUE;
     }
@@ -346,12 +355,12 @@ void TpPdu::ProcessErrResponse(uint8_t rc)
   /* Set RC and Status Bytes */
   index += TPHDR_BCOUNTLEN;
   rspBuff[index++] = rc;
-  rspBuff[index++] = STATUS_OK;
+  rspBuff[index++] = getSavedDevStatus(); // #165
 
   /* Set 16-bit cmd number, if applicable */
   if (is16BitCmd)
   {
-    uint8_t ind16BitCmd = TP_OFFSET_CMD_UNIQ + 2;
+    uint8_t ind16BitCmd = (IsLongFrame() ? TP_OFFSET_CMD_UNIQ : TP_OFFSET_CMD_POLL) + 2;
 
     rspBuff[index++] = pPDU[ind16BitCmd];
     rspBuff[index++] = pPDU[ind16BitCmd + 1];
@@ -422,7 +431,7 @@ void TpPdu::ProcessOkResponse(uint8_t rc, uint8_t bc)
   /* Set RC and Status Bytes */
   index += TPHDR_BCOUNTLEN;
   rspBuff[index++] = rc;
-  rspBuff[index++] = STATUS_OK;
+  rspBuff[index++] = getSavedDevStatus(); // #165
 
   // copy all data bytes, including exp cmd #
   memcpy_s(&rspBuff[index], TPPDU_MAX_DATALEN, DataBytes(), rspLen);
@@ -488,8 +497,8 @@ void TpPdu::SetCheckSum()
 
 void TpPdu::InsertCheckSum()
 {
-	int len   = TotalLength() - 1;// -1 convert counting number to index
-	pPDU[len] = CheckSum(pPDU, len);// checksum doesn't include the checksum byte
+	int len   = TotalLength();
+	pPDU[len] = CheckSum(pPDU, len); // checksum byte is not incvluded in the calculation
 }
 
 // return true if PDU is valid
@@ -565,8 +574,15 @@ void TpPdu::setCommandNumber(uint16_t newCmd)
 		
 		// get index of expanded cmd #, corrected for RC & DEVSTAT
 		cindex = 2 + (IsLongFrame() ? TP_OFFSET_DATA_UNIQ : TP_OFFSET_DATA_POLL);
-		pPDU[cindex] = (uint8_t)(newCmd & 0xff);
-		pPDU[cindex+1] = (uint8_t)((newCmd>>8) & 0xff);
+		pPDU[cindex] = (uint8_t)((newCmd>>8) & 0xff);
+		pPDU[cindex+1] = (uint8_t)(newCmd & 0xff);
+
+    uint16_t checkValue = ((uint16_t)pPDU[cindex] * 256) + (uint16_t)pPDU[cindex + 1];
+
+    if (checkValue != newCmd)
+    {
+      // return an error here if needed ; this just checks that the pdu stored the cmd properly
+    }
 	}
 }
 
@@ -663,5 +679,130 @@ TerminateAppPdu::TerminateAppPdu()
 TerminateAppPdu::TerminateAppPdu(uint8_t *data) : store(data)
 {
 	addedByteCount = 0;
+}
+
+uint16_t to_uint16(char b1, char b2)
+{
+  char temp[3];
+  temp[0] = b1;
+  temp[1] = b2;
+  temp[2] = 0;
+  return *(uint16_t*)&temp[0];
+}
+
+unsigned short SyslogAppPdu::Priority()
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN;
+  return to_uint16(buf[1], buf[0]);
+}
+
+void SyslogAppPdu::GetDescription(char* to, int len)
+{
+  len = len > SYSLOG_DESC_LEN ? SYSLOG_DESC_LEN : len;
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN;	
+  buf += SYSLOG_STATUS_LEN + SYSLOG_PRIORITY_LEN + SYSLOG_TIMESTAMP_LEN + SYSLOG_HOSTNAME_LEN + 
+    SYSLOG_MANUFACTURER_LEN + SYSLOG_PRODUCT_LEN + SYSLOG_DEV_REV_LEN + SYSLOG_EVENT_ID_LEN;
+  for (int i = 0; i < SYSLOG_DESC_LEN ; ++i)
+  {
+    *to = *buf;
+    ++to;
+    ++buf;
+  }
+}
+
+unsigned short SyslogAppPdu::Status()
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN + SYSLOG_PRIORITY_LEN;
+  return to_uint16(buf[1], buf[0]);
+}
+
+void SyslogAppPdu::GetDate(char* to, int len)
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN + SYSLOG_PRIORITY_LEN + SYSLOG_STATUS_LEN;
+  to[0] = buf[0];
+  to[1] = buf[1];
+  to[2] = buf[2];
+  to[3] = buf[3];
+  to[4] = '-';
+  to[5] = buf[4];
+  to[6] = buf[5];
+  to[7] = '-';
+  to[8] = buf[6];
+  to[9] = buf[7];
+  to[10] = 'T';
+
+  to[11] = buf[8];
+  to[12] = buf[9];
+  to[13] = ':';
+  to[14] = buf[10];
+  to[15] = buf[11];
+  to[16] = ':';
+  to[17] = buf[12];
+  to[18] = buf[13];
+  to[19] = '.';
+  to[20] = buf[14];
+  to[21] = buf[15];
+  to[22] = buf[16];
+}
+
+void SyslogAppPdu::GetHost(char* to, int len)
+{
+  len = len > SYSLOG_HOSTNAME_LEN ? SYSLOG_HOSTNAME_LEN : len;
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN;	
+  buf += SYSLOG_STATUS_LEN + SYSLOG_PRIORITY_LEN + SYSLOG_TIMESTAMP_LEN;
+  for (int i = 0; i < SYSLOG_HOSTNAME_LEN ; ++i)
+  {
+    *to = *buf;
+    ++to;
+    ++buf;
+  }
+
+}
+
+unsigned short SyslogAppPdu::Manufacturer()
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN + SYSLOG_PRIORITY_LEN + SYSLOG_STATUS_LEN + SYSLOG_TIMESTAMP_LEN +
+    SYSLOG_HOSTNAME_LEN;
+  return to_uint16(buf[1], buf[0]);
+}
+
+unsigned short SyslogAppPdu::ExtendedDeviceType()
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN + SYSLOG_PRIORITY_LEN + SYSLOG_STATUS_LEN + SYSLOG_TIMESTAMP_LEN +
+    SYSLOG_HOSTNAME_LEN + SYSLOG_MANUFACTURER_LEN;
+  return to_uint16(buf[1], buf[0]);
+}
+
+unsigned char SyslogAppPdu::DeviceRevision()
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN + SYSLOG_PRIORITY_LEN + SYSLOG_STATUS_LEN + SYSLOG_TIMESTAMP_LEN +
+    SYSLOG_HOSTNAME_LEN + SYSLOG_MANUFACTURER_LEN + SYSLOG_PRODUCT_LEN;
+  return uint16_t(buf[0]);
+}
+
+unsigned short SyslogAppPdu::EventId()
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN + SYSLOG_PRIORITY_LEN + SYSLOG_STATUS_LEN + SYSLOG_TIMESTAMP_LEN +
+    SYSLOG_HOSTNAME_LEN + SYSLOG_MANUFACTURER_LEN + SYSLOG_PRODUCT_LEN + SYSLOG_DEV_REV_LEN;
+  return to_uint16(buf[1], buf[0]);
+
+}
+
+unsigned char SyslogAppPdu::Severity()
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN + SYSLOG_PRIORITY_LEN + SYSLOG_STATUS_LEN + SYSLOG_TIMESTAMP_LEN +
+    SYSLOG_HOSTNAME_LEN + SYSLOG_MANUFACTURER_LEN + SYSLOG_PRODUCT_LEN + SYSLOG_DEV_REV_LEN + SYSLOG_EVENT_ID_LEN + SYSLOG_DESC_LEN;
+  return uint8_t(buf[0]);
+
+}
+
+unsigned int SyslogAppPdu::DeviceID()
+{
+  char* buf = (char*)store.Store() + TPPDU_MAX_HDRLEN + SYSLOG_PRIORITY_LEN + SYSLOG_STATUS_LEN + SYSLOG_TIMESTAMP_LEN +
+    SYSLOG_HOSTNAME_LEN + SYSLOG_MANUFACTURER_LEN + SYSLOG_PRODUCT_LEN + SYSLOG_DEV_REV_LEN + SYSLOG_EVENT_ID_LEN + SYSLOG_DESC_LEN + SYSLOG_SEVERITY_LEN;
+  unsigned int deviceID = *(unsigned int*)buf;
+  deviceID = ntohl(deviceID);
+  return deviceID;
+
 }
 

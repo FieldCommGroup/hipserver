@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,6 +58,7 @@ typedef enum
   INST_ERROR,
   INVALID_INPUT_ERROR,
   ITIMER_ERROR,
+  KEEP_ALIVE_STATUS_ERROR,
   LICENSE_ERROR,
   MALLOC_ERROR,
   MIC_ERROR,
@@ -70,6 +71,8 @@ typedef enum
   MSG_TYPE_ERROR,
   NOMSGRCD_ERROR,
   NONCE_ERROR,
+  NOT_INIT_MSG_ERROR,
+  NOT_ZERO_RESERVED_BITS,  
   NWK_ERROR,
   OVERFLOW_ERROR,
   PARAM_ERROR,
@@ -82,6 +85,7 @@ typedef enum
   RCVMSG_ERROR,
   READ_BUFF_ERROR,
   READ_ERROR,
+  READ_ONLY_ACCESS_ERROR,
   SEM_ERROR,
   SESSION_ERROR,
   SHMEM_ERROR,
@@ -95,6 +99,7 @@ typedef enum
   SOCKET_SENDTO_ERROR,
   THREAD_ERROR,
   TIMEOUT_ERROR,
+  TOO_LONG_PAYLOAD_ERROR,
   UNKNOWN_ERROR,
   VALIDATION_ERROR,
   VERSION_ERROR,

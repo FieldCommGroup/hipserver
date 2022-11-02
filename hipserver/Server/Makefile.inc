@@ -1,5 +1,5 @@
 #*************************************************************************************************
-# Copyright 2020 FieldComm Group, Inc.
+# Copyright 2019-2021 FieldComm Group, Inc.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +33,9 @@ COMMON_HFILES = $(DIR_COMN)/common.h      \
                 $(DIR_COMN)/hartdefs.h    \
                 $(DIR_APPC)/tpdll.h       \
                 $(DIR_APPC)/appmsg.h      \
+                $(DIR_SERVER)/hssyslogger.h      \
                 debug.h                   \
+                mutex2.h                  \
                 tooldef.h
 
 
@@ -47,7 +49,8 @@ HSRVR_CFILES = $(DIR_RLTM)/toolsems     \
                hssems                   \
                hssigs                   \
                hsthreads                \
-               hsutils
+               hsutils                  \
+               factory_reset
 
 # Then list all .c files that have no corresponding .h file
 # (1b)
@@ -60,11 +63,26 @@ HSRVR_NOH_CFILES = main
 # (1c)
 HSRVR_CPPFILES = $(DIR_APPC)/tppdu       \
                  $(DIR_RLTM)/toolqueues  \
+                 hshostnamesystem        \
+                 hssettings              \
+                 hsauditlog              \
+                 hsreadonlycommandsmanager \
+                 hssecurityconfiguration \
+                 hscommands              \
+                 hscommandsmanager       \
+                 hsconnectionmanager     \
                  hsqueues                \
                  hsrequest               \
                  hssubscribe             \
-                 hsudp
-
+                 hshandlermessages       \
+                 hsudp                   \
+                 onetcpprocessor         \
+                 tcpprocessor            \
+                 threadex                \
+                 hsnetworkmanager        \
+                 hssyslogger             \
+                 hssettingshandler
+                 
 # Then list all .cpp files that have no corresponding .h file
 # (1d)
 HSRVR_NOH_CPPFILES =

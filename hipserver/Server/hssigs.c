@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,9 @@
  *   and other signal related operations for HServer.
  *
  **********************************************************/
-#include  <errno.h>
-#include  <stdio.h>
+#include <errno.h>
+#include <stdio.h>
+#include "hssyslogger.h"
 
 #include "debug.h"
 #include "hssems.h"
@@ -33,6 +34,8 @@
 #include "hssigs.h"
 #include "hsudp.h"
 #include "hsqueues.h"
+#include "hsconnectionmanager.h"
+#include "hsauditlog.h"
 
 static void sighandler_hs_endall(int32_t sigNum);
 
@@ -121,18 +124,22 @@ errVal_t setup_rtsig(int32_t sigNum,
 	return (errval);
 }
 
-void sighandler_socketInactivity(int32_t sigNum, siginfo_t *p_sigInfo,
+void sighandler_timer(int32_t sigNum, siginfo_t *p_sigInfo,
 		void *p_context)
 {
-	const char *funcName = "sighandler_socketInactivity";
+	const char *funcName = "sighandler_timer";
 	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
 
 	dbgp_sig("Got RT Signal %d\n", sigNum);
-	if (sigNum >= SIGRTMIN)
+	if(sigNum == EVENT_1200)
+	{
+		Handle1200Event();
+	}
+	else if (sigNum >= SIGRTMIN)
 	{
 		uint8_t thisSess = sigNum - SIGRTMIN;
 		print_to_both(p_toolLogPtr, "HART-IP Session Timeout...  ");
-		clear_session_info(thisSess);
+		ConnectionsManager::Instance()->RemoveInactivitySession(thisSess);
 	}
 }
 
@@ -218,7 +225,7 @@ errVal_t assign_hs_sig_handlers(sigaction_t *p_newAction,
 		 * sa_flag with signal numbers between SIGRTMIN and SIGRTMAX
 		 * with different handlers to be used as needed. Currently,
 		 * only one signal (SIGRTMIN) is used for one socket client */
-		errval = setup_rtsig(sigNum, sighandler_socketInactivity, p_newAction,
+		errval = setup_rtsig(sigNum, sighandler_timer, p_newAction,
 				p_oldAction);
 
 		if (errval != NO_ERROR)
