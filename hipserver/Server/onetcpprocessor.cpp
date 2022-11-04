@@ -526,7 +526,7 @@ unsigned int psk_out_of_bound_serv_cb(SSL *ssl, const char *id, unsigned char *p
     }
     else
     {
-        memcpy(psk, (unsigned char*)pSlot->m_keyVal.data(), pSlot->m_keyVal.size());
+        memcpy_s(psk, max_psk_len, (unsigned char*)pSlot->m_keyVal.data(), pSlot->m_keyVal.size());
   print_to_both(p_toolLogPtr, "SSL CTX PSK Identity Hint: %s \n", SSL_get_psk_identity_hint(ssl));
         retVal = pSlot->m_keyVal.size();
 		SecurityConfigurationTable::Instance()->AddConnection(ssl, itr->first);

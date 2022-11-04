@@ -164,7 +164,10 @@ uint8_t process_command_line(int argc, char* argv[])
 
     if (strcmp(argv[i], "-p") == 0)
     {
-    	if (strstr(argv[i-1], TOOL_NAME) != NULL)
+      // if this program name is "hipserver"
+      //argv[0] is the program name
+      int indicator; // unused
+    	if (strcmp_s(argv[0], sizeof(TOOL_NAME), TOOL_NAME, &indicator) == 0)
     	{
     		i++;
     		//argv[0] is the program name atol = ascii to int
@@ -205,8 +208,8 @@ uint8_t process_command_line(int argc, char* argv[])
     else if(strcmp(argv[i], "-C") == 0)
     {
       i++;
-      memset(pathToCertificate, 0, sizeof(pathToCertificate));
-      memcpy(pathToCertificate, argv[i], strlen(argv[i]) + 1);
+      memset_s(pathToCertificate, sizeof(pathToCertificate), 0);
+      memcpy_s(pathToCertificate, sizeof(pathToCertificate), argv[i], strnlen_s(argv[i], SETTINGS_FOLDER_PATH.size()) + 1);
       i++;
     }
   #endif
@@ -313,12 +316,12 @@ void *mainThrFunc(void *thrName)
   std::string checkCommand = "lsof -i:" + std::to_string(portNum) +" | grep dhclient  | awk '{print $2}' | uniq";
   int n1 = checkCommand.length();
   char checkCommandArray[n1 + 1];
-  strcpy(checkCommandArray, checkCommand.c_str());
+  strcpy_s(checkCommandArray, n1 + 1, checkCommand.c_str());
 
   std::string killCommand = checkCommand + " | xargs kill -9";
   int n2 = killCommand.length();
   char killCommandArray[n2 + 1];
-  strcpy(killCommandArray, killCommand.c_str());
+  strcpy_s(killCommandArray, n2 + 1, killCommand.c_str());
   
   do
   {

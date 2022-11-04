@@ -120,12 +120,15 @@ memcpy_s (void *dest, rsize_t dmax, const void *src, rsize_t smax)
     // AR: documentation needed on use of the error handlers -
     // AR: default err handler should output to stderr on DEBUG
     // AR: update docs to define return RCNEGATE of the error number
+
+#if 0    // smax = 0 is a legitimate no-op, this error-handling is not required per ISO spec
     if (smax == 0) {
         mem_prim_set(dp, dmax, 0);
         invoke_safe_mem_constraint_handler("memcpy_s: smax is 0",
                    NULL, ESZEROL);
         return RCNEGATE(ESZEROL);
     }
+#endif
 
     if (smax > dmax) {
         mem_prim_set(dp, dmax, 0);

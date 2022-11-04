@@ -33,4 +33,8 @@
 *.ipch
 /.vs
 
+.vscode/
+
+hipserver/safestringlib/out/build/x64-Debug/.cmake/api/v1/reply/
+
 hipserver/safestringlib/out/build/x64-Debug/

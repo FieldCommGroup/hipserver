@@ -123,7 +123,7 @@ unsigned gpioHardwareRevision(void)
       {
          if (!strncasecmp("revision", buf, 8))
          {
-            if (sscanf(buf+strlen(buf)-(chars+1),
+            if (sscanf(buf+strnlen_s(buf, sizeof(buf))-(chars+1),
                "%x%c", &rev, &term) == 2)
             {
                if (term != '\n') rev = 0;

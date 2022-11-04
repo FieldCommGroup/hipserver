@@ -75,8 +75,8 @@ bool TpPdu::AddressMatch(const uint8_t *a)
   // mask off primary master bit AND burst mode bit
   buf1[0] &= 0x3f;
   buf2[0] &= 0x3f;
-
-  bool match = (memcmp(buf1, buf2, AddressLen()) == 0);
+  int diff;
+  bool match = (memcmp_s(buf1, TPHDR_ADDRLEN_UNIQ, buf2, AddressLen()) == 0, &diff);
   return match;
 }
 
@@ -542,6 +542,7 @@ void TpPdu::printMsg()
 {
 	if (pPDU == NULL)
 	{
+  // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
 	printf("ERROR   ERROR   ERROR   ERROR   ERROR   ERROR   ERROR   ERROR \n");
 	}
 	else

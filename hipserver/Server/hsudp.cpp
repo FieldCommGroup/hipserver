@@ -118,7 +118,7 @@ static errVal_t create_udpserver_socket(uint16_t serverPortNum, int32_t *pSocket
 		else
 		{
 			*pSocketFD = socketFD;
-            memcpy(pServer_addr, &server_addr, sizeof(sockaddr_in_t));
+            memcpy_s(pServer_addr, sizeof(sockaddr_in_t), &server_addr, sizeof(sockaddr_in_t));
 
 			int buffsize = HARTIP_MAX_MSG_LEN;
 			//setsockopt(socketFD, SOL_SOCKET, SO_RCVBUF, &buffsize, sizeof(buffsize));
@@ -846,7 +846,7 @@ void UdpProcessor::CreateUdpServerSocket(int32_t serverSocket, sockaddr_in_t *se
 {
 	m_isRunning = TRUE;
 	m_socket = serverSocket;
-	memcpy(&m_server_addr, serverAddress, sizeof(sockaddr_in_t));
+	memcpy_s(&m_server_addr, sizeof(m_server_addr), serverAddress, sizeof(sockaddr_in_t));
 }
 
 unsigned char cookie_secret[COOKIE_SECRET_LENGTH];
@@ -895,15 +895,15 @@ int generate_cookie(SSL* ssl, unsigned char* cookie, unsigned int* cookie_len)
         }
         else
         {
-            memcpy(buffer, &server_addr.sin_port, sizeof(in_port_t));
-            memcpy(buffer + sizeof(server_addr.sin_port), &server_addr.sin_addr, sizeof(struct in_addr));
+            memcpy_s(buffer, length, &server_addr.sin_port, sizeof(in_port_t));
+            memcpy_s(buffer + sizeof(server_addr.sin_port), length, &server_addr.sin_addr, sizeof(struct in_addr));
 
             /* Calculate HMAC of buffer using the secret */
             HMAC(EVP_sha1(), (const void*)cookie_secret, COOKIE_SECRET_LENGTH,
                  (const unsigned char*)buffer, length, result, &resultlength);
             OPENSSL_free(buffer);
 
-            memcpy(cookie, result, resultlength);
+            memcpy_s(cookie, *cookie_len, result, resultlength);
             *cookie_len = resultlength;
             retVal = 1;
         }
@@ -948,15 +948,15 @@ int verify_cookie(SSL* ssl, const unsigned char* cookie, unsigned int cookie_len
         else
         {
             retVal = 1;
-            memcpy(buffer, &server_addr.sin_port, sizeof(in_port_t));
-            memcpy(buffer + sizeof(in_port_t), &server_addr.sin_addr, sizeof(struct in_addr));
+            memcpy_s(buffer, length, &server_addr.sin_port, sizeof(in_port_t));
+            memcpy_s(buffer + sizeof(in_port_t),length, &server_addr.sin_addr, sizeof(struct in_addr));
 
             /* Calculate HMAC of buffer using the secret */
             HMAC(EVP_sha1(), (const void*)cookie_secret, COOKIE_SECRET_LENGTH,
                  (const unsigned char*)buffer, length, result, &resultlength);
             OPENSSL_free(buffer);
-
-            int cookieCheck = (cookie_len == resultlength) && memcmp(result, cookie, resultlength);
+            int diff;
+            int cookieCheck = (cookie_len == resultlength) && memcmp_s(result, EVP_MAX_MD_SIZE, cookie, resultlength, &diff);
             if (!cookieCheck)
             {
                 retVal = 1;

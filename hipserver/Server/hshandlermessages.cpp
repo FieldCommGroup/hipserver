@@ -625,12 +625,12 @@ void HandlerMessages::RunUdp()
 			struct 	ThreadArguments *threadArguments;
 			threadArguments = (struct ThreadArguments *)malloc(sizeof(struct ThreadArguments));
 
-			memcpy(threadArguments->rawDataBytes, pdustore, sizeof(pdustore));
+			memcpy_s(threadArguments->rawDataBytes, sizeof(threadArguments->rawDataBytes), pdustore, sizeof(pdustore));
 			threadArguments->receivedBytes = received;
 			threadArguments->clientAddress = addr;
 			threadArguments->serverSocket = GetMainSocket();
 			sockaddr_in_t *tempServerAddr = GetServerAddress();
-			memcpy((struct sockaddr *)&threadArguments->serverAddress, tempServerAddr, sizeof(sockaddr_in_t));
+			memcpy_s((sockaddr_in_t*)&threadArguments->serverAddress, sizeof(sockaddr_in_t), tempServerAddr, sizeof(sockaddr_in_t)); 
 			threadArguments->commandManagerInstance = m_commandManager;
 
 			print_to_both(p_toolLogPtr, "StartUdp: receivedBytes: %d \n", threadArguments->receivedBytes);
