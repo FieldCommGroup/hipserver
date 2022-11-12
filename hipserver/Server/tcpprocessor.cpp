@@ -124,7 +124,7 @@ void TcpProcessor::Run()
                 {
                     printf("  Listening socket is readable\n");
                     sockaddr_in_t address;
-                    memset(&address, 0, sizeof(address));
+                    memset_s(&address, sizeof(address), 0);
                     socklen_t len = sizeof(address);
                     int new_sd = accept(m_socket, (struct sockaddr*)&address, &len);
                     if (new_sd < 0)

@@ -137,7 +137,7 @@ void log(int priority, int status, const char* date, const char* host, int manuf
     char logSendBuffer[2048];
     sprintf_s(logSendBuffer, sizeof(logSendBuffer) - 1, " <%d> %s %s |%X|%X|%X|%d|%s|%d|DeviceID=%X src=%s c6a2=%s %s%s\n\x00", priority, date, host, 
 	manufacturer, extendedDeviceType, (int)deviceRevision, eventId, desc, severity, deviceID, gl_sServerIPv4.c_str(), gl_sServerIPv6.c_str(), ipv4 ? "dst=" : "", ipv4 ? ipv4 : "");
-
+    int sendCount = strnlen_s(logSendBuffer, sizeof(logSendBuffer));
     writeMessage(logSendBuffer, sendCount);
 }
 

@@ -77,7 +77,7 @@ void Handle1200Event()
 
 UpdaterEndConfigurationCounter::UpdaterEndConfigurationCounter() : TPCommand(TpPduStore(), NULL, FALSE)
 {
-    memset(m_tppduStore.Store(), 0, TPPDU_MAX_FRAMELEN);
+    memset_s(m_tppduStore.Store(), TPPDU_MAX_FRAMELEN, 0);
     TpPdu pdu(m_tppduStore);
     *pdu.Delim() = *pdu.Delim() | TPDELIM_STX_POLL;
 }
@@ -86,7 +86,7 @@ errVal_t UpdaterEndConfigurationCounter::SendMessage(TpPdu tppdu, int transactio
 {
     MutexScopeLock lock(m_mutex);
     uint16_t configurationCounter = 0;
-    memcpy(&configurationCounter, tppdu.ResponseBytes() + CONFIGURATION_COUNTER_INDEX, sizeof(configurationCounter));
+    memcpy_s(&configurationCounter, sizeof(configurationCounter), tppdu.ResponseBytes() + CONFIGURATION_COUNTER_INDEX, sizeof(configurationCounter));
 
     configurationCounter = ntohs(configurationCounter);
 
@@ -545,8 +545,9 @@ char* AuditLog::GetSysLogString(StatisticSession *session)
 {
     static char resultString[SYSLOG_STRING_LENGTH];
 
-    memset(resultString, 0, SYSLOG_STRING_LENGTH);
+    memset_s(resultString, SYSLOG_STRING_LENGTH, 0);
 
+    // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
     sprintf(resultString, "%s:%hu: %hu, %hu, %hu, %hu", inet_ntoa(session->m_address.sin_addr), session->m_address.sin_port,
                      session->m_status, session->m_stxCounter, session->m_ackCounter, session->m_backCounter);
 

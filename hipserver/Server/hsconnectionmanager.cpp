@@ -54,11 +54,11 @@ void HARTIPConnection::SetSocket(uint32_t socket_fd)
 }
 void HARTIPConnection::SetAddress(const sockaddr_in_t& address)
 {
-    memcpy(&m_clientAddr, &address, sizeof(m_clientAddr));
+    memcpy_s(&m_clientAddr, sizeof(m_clientAddr), &address, sizeof(m_clientAddr));
 }
 void HARTIPConnection::SetAddress6(const sockaddr_in6_t& address)
 {
-    memcpy(&m_clientAddr6, &address, sizeof(m_clientAddr6));
+    memcpy_s(&m_clientAddr, sizeof(m_clientAddr6), &address, sizeof(m_clientAddr6));
 }
 
 void HARTIPConnection::SetTimerTime(uint32_t time)
@@ -73,6 +73,7 @@ uint16_t HARTIPConnection::NextSequnce()
 char* HARTIPConnection::GetSessionInfoString()
 {
     static char returnval[32];
+    // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
     sprintf(returnval, "%s:%d", inet_ntoa(m_clientAddr.sin_addr), ntohs(m_clientAddr.sin_port));
     return returnval;
 }
@@ -80,6 +81,7 @@ char* HARTIPConnection::GetSessionInfoString()
 char* HARTIPConnection::GetSessionIPv4()
 {
     static char returnval[24];
+    // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
     sprintf(returnval, "%s", inet_ntoa(m_clientAddr.sin_addr));
     return returnval;
 }
@@ -87,8 +89,8 @@ char* HARTIPConnection::GetSessionIPv4()
 
 HARTIPConnection::HARTIPConnection() : m_id(HARTIP_SESSION_ID_INVALID), m_idInactTimer(NULL), m_isInitiatedSession(FALSE)
 {
-    memset(&m_clientAddr, 0, sizeof(m_clientAddr));
-    memset(&m_clientAddr6, 0, sizeof(m_clientAddr6));
+    memset_s(&m_clientAddr, sizeof(m_clientAddr), 0);
+    memset_s(&m_clientAddr6, sizeof(m_clientAddr6), 0);
 }
 
 bool_t HARTIPConnection::IsSameAddress(sockaddr_in_t& address)
@@ -98,12 +100,12 @@ bool_t HARTIPConnection::IsSameAddress(sockaddr_in_t& address)
 
 void HARTIPConnection::GetAddress(sockaddr_in_t *address)
 {
-    memcpy(address, &m_clientAddr, sizeof(m_clientAddr));
+    memcpy_s(address, sizeof(sockaddr_in_t), &m_clientAddr, sizeof(m_clientAddr));
 }
 
 void HARTIPConnection::GetAddress6(sockaddr_in6_t *address)
 {
-    memcpy(address, &m_clientAddr6, sizeof(m_clientAddr6));
+    memcpy_s(address, sizeof(sockaddr_in6_t), &m_clientAddr6, sizeof(m_clientAddr6));
 }
 
 bool_t HARTIPConnection::IsInitiatedSession()

@@ -11,6 +11,7 @@
 */
 
 #include <factory_reset.h>
+#include "safe_lib.h"
 
 void gpioSetMode(unsigned gpio, unsigned mode)
 {
@@ -123,7 +124,7 @@ unsigned gpioHardwareRevision(void)
       {
          if (!strncasecmp("revision", buf, 8))
          {
-            if (sscanf(buf+strlen(buf)-(chars+1),
+            if (sscanf(buf+strnlen(buf, sizeof(buf))-(chars+1),
                "%x%c", &rev, &term) == 2)
             {
                if (term != '\n') rev = 0;
