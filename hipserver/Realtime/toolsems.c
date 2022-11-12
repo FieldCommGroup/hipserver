@@ -148,7 +148,7 @@ uint8_t get_sem_name(sem_t *p_sem, char *semName)
   {
     if (p_sem == htoolSems[n].p_sem)
     {
-      strcpy(semName, htoolSems[n].semName);
+      strcpy_s(semName, SEM_NAME_SIZE, htoolSems[n].semName);
       found = TRUE;
       break;
     }
@@ -233,7 +233,7 @@ static errVal_t remove_sem(sem_t *p_sem, const char *semName)
 void *createUniqueName(char* semName)
 {
   char tempName[SEM_NAME_SIZE] = "";
-  sprintf(tempName,"%d",getpid());
-  strcat(semName,tempName);
+  sprintf_s(tempName, SEM_NAME_SIZE, "%d",getpid());
+  strcat_s(semName,SEM_NAME_SIZE, tempName);
   return semName;
 }

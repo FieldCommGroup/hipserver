@@ -430,7 +430,7 @@ errVal_t TPCommand::SendMessage(TpPdu tppdu, int transaction)
 	if(tppdu.CmdNum() == 0)
 	{
 		uint16_t configurationCounter = 0;
-		memcpy(&configurationCounter, tppdu.ResponseBytes() + CONFIGURATION_COUNTER_INDEX, sizeof(configurationCounter));
+		memcpy_s(&configurationCounter, sizeof(configurationCounter), tppdu.ResponseBytes() + CONFIGURATION_COUNTER_INDEX, sizeof(configurationCounter));
 
 		AuditLogger->UpdateStartConfigurationCounter(m_resSender->GetSession(), ntohs(configurationCounter));
 
@@ -824,7 +824,7 @@ void TPCommand::RunSimulatedCommand520()
 
 struct DirectPDUCommand
 {
-	uint8_t *m_pCommand;
+	uint8_t *m_pCommand;	// size HARTIP_MAX_PYLD_LEN
 
 	uint16_t GetNumberCommand();
 	uint8_t GetByteData();
@@ -839,7 +839,7 @@ struct DirectPDUCommand
 uint16_t DirectPDUCommand::GetNumberCommand()
 {
 	uint16_t commandNumber;
-	memcpy(&commandNumber, m_pCommand, sizeof(uint16_t));
+	memcpy_s(&commandNumber, COMMAND_NUMBER_LENGTH, m_pCommand, sizeof(uint16_t));
 	return ntohs(commandNumber);
 }
 
@@ -861,7 +861,7 @@ uint8_t *DirectPDUCommand::GetData()
 void DirectPDUCommand::SetNumberCommand(uint16_t nmb)
 {
 	nmb = htons(nmb);
-	memcpy(m_pCommand, &nmb, sizeof(uint16_t));
+	memcpy_s(m_pCommand, COMMAND_NUMBER_LENGTH, &nmb, sizeof(uint16_t));
 }
 
 void DirectPDUCommand::SetByteData(uint8_t cntByte)
@@ -877,22 +877,28 @@ void DirectPDUCommand::SetData(uint8_t *data, uint8_t cntByte, bool_t isExpCmd)
 	m_pCommand[COMMAND_NUMBER_LENGTH] = cntByte + rclength - rcdslength;
 
 	if (!isExpCmd)
-	{
-		memcpy(m_pCommand + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH, data, rclength);
-		memcpy(m_pCommand + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH + rclength, data+rcdslength, cntByte - rcdslength);
+	{	
+		memcpy_s(m_pCommand + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH, HARTIP_MAX_PYLD_LEN, data, rclength);
+		if (cntByte - rcdslength > 0)
+		{
+			memcpy_s(m_pCommand + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH + rclength, HARTIP_MAX_PYLD_LEN, data+rcdslength, cntByte - rcdslength);
+		}
 	}
 	else
 	{
 		const int expCommandLength = 2;
-		memcpy(m_pCommand + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH, data, rclength);
-		memcpy(m_pCommand + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH + rclength, data + expCommandLength+rcdslength, cntByte - rcdslength);
+		memcpy_s(m_pCommand + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH, HARTIP_MAX_PYLD_LEN, data, rclength);
+		if (cntByte - rcdslength > 0)
+		{
+			memcpy_s(m_pCommand + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH + rclength, HARTIP_MAX_PYLD_LEN, data + expCommandLength+rcdslength, cntByte - rcdslength);
+		}
 	}
 }
 
 TpPduStore ToTpPduAck(uint8_t *data)
 {
 	uint16_t commandNumber;
-	memcpy(&commandNumber, data, sizeof(uint16_t));
+	memcpy_s(&commandNumber, sizeof(commandNumber), data, sizeof(uint16_t));
 	commandNumber = ntohs(commandNumber);
 	bool isExtendedCommand = commandNumber > 255;
 
@@ -908,12 +914,12 @@ TpPduStore ToTpPduAck(uint8_t *data)
 
 	uint8_t buf[TPPDU_MAX_DATALEN] = {TPDELIM_FRAME_STX, 0, commandNumberData, byteCommand};
 	uint8_t *dataPointer = data + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH;
-	memcpy(buf + offsetData, dataPointer, data[COMMAND_NUMBER_LENGTH]);
+	memcpy_s(buf + offsetData, TPPDU_MAX_DATALEN - offsetData, dataPointer, data[COMMAND_NUMBER_LENGTH]);
 
 	if (isExtendedCommand)
 	{
 		uint16_t extendedCommand = htons(commandNumber);
-		memcpy(buf + offsetData - 2, &extendedCommand, sizeof(extendedCommand));
+		memcpy_s(buf + offsetData - 2, TPPDU_MAX_DATALEN, &extendedCommand, sizeof(extendedCommand));
 	}
 	return TpPduStore(buf);
 }

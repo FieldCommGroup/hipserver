@@ -135,8 +135,8 @@ void log(int priority, int status, const char* date, const char* host, int manuf
         return;
     }
     char logSendBuffer[2048];
-    int sendCount = snprintf(logSendBuffer, sizeof(logSendBuffer) - 1, " <%d> %s %s |%X|%X|%X|%d|%s|%d|DeviceID=%X src=%s c6a2=%s %s%s\n\x00", priority, date, host, 
-	 manufacturer, extendedDeviceType, (int)deviceRevision, eventId, desc, severity, deviceID, gl_sServerIPv4.c_str(), gl_sServerIPv6.c_str(), ipv4 ? "dst=" : "", ipv4 ? ipv4 : "");
+    sprintf_s(logSendBuffer, sizeof(logSendBuffer) - 1, " <%d> %s %s |%X|%X|%X|%d|%s|%d|DeviceID=%X src=%s c6a2=%s %s%s\n\x00", priority, date, host, 
+	manufacturer, extendedDeviceType, (int)deviceRevision, eventId, desc, severity, deviceID, gl_sServerIPv4.c_str(), gl_sServerIPv6.c_str(), ipv4 ? "dst=" : "", ipv4 ? ipv4 : "");
 
     writeMessage(logSendBuffer, sendCount);
 }
@@ -156,7 +156,7 @@ void log(int priority, int eventId, int severity, HARTIPConnection* conn, const 
     nowtime = tv.tv_sec;
     nowtm = localtime(&nowtime);
     strftime(tmbuf, sizeof(tmbuf), "%Y-%m-%dT%02H:%02M:%02S", nowtm);
-    snprintf(buf, sizeof(buf), "%s.%03ldZ", tmbuf, tv.tv_usec/1000);
+    sprintf_s(buf, sizeof(buf), "%s.%03ldZ", tmbuf, tv.tv_usec/1000);
     log(priority, 0, buf, Settings::Instance()->GetHostName().c_str(), gl_Manufacturer, gl_ExtendedDeviceType, gl_DeviceRevision, eventId, szData, severity, gl_DeviceID, conn ? conn->GetSessionIPv4() : NULL);
 }
 
@@ -168,7 +168,7 @@ bool initHipSyslogger(const char* pathToCaFile)
     g_connectionToSyslog.m_port = 0;
     g_connectionToSyslog.m_socket = LINUX_ERROR;
     g_connectionToSyslog.m_connected = false;
-    memset(&g_connectionToSyslog.m_addres, 0, sizeof(sockaddr_in_t));
+    memset_s(&g_connectionToSyslog.m_addres, sizeof(sockaddr_in_t), 0);
 
 #ifdef OPEN_SSL_SUPPORT
     SSL_load_error_strings();
@@ -351,20 +351,20 @@ int getPortToHipSyslogger()
 void getHostnameToHipSyslogger(char* inBuffer, int maxInBuffer)
 {
     MutexScopeLock(g_connectionToSyslog.m_mutex);
-    strncpy(inBuffer, g_connectionToSyslog.m_hostname.c_str(), maxInBuffer);
+    strncpy_s(inBuffer, maxInBuffer, g_connectionToSyslog.m_hostname.c_str(), maxInBuffer);
 }
 
 
 void getPreSharedKeyToHipSyslogger(char* inBuffer, int maxInBuffer)
 {
     MutexScopeLock lock(g_connectionToSyslog.m_mutex);
-    strncpy(inBuffer, g_connectionToSyslog.m_PreSharedKey.c_str(), maxInBuffer);
+    strncpy_s(inBuffer, maxInBuffer, g_connectionToSyslog.m_PreSharedKey.c_str(), maxInBuffer);
 }
 
 void getPasswordToHipSyslogger(char* inBuffer, int maxInBuffer)
 {
     MutexScopeLock lock(g_connectionToSyslog.m_mutex);
-    strncpy(inBuffer, g_connectionToSyslog.m_Password.c_str(), maxInBuffer);
+    strncpy_s(inBuffer, maxInBuffer, g_connectionToSyslog.m_Password.c_str(), maxInBuffer);
 }
 
 void log2HipSyslogger(int priority, int status, char* date, char* host, int manufacturer, int extendedDeviceType, char deviceRevision, int eventId,  char* desc, int severity, unsigned int deviceID, const char* ipv4)
@@ -393,6 +393,7 @@ int connectToServer(const char* hostname, int port, sockaddr_in_t *addr_out, int
     hints.ai_protocol = protocol;
     
     char portString[6];
+    // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
     sprintf(portString, "%d", port);
     const int status = getaddrinfo(hostname, portString, &hints, &addrs);
     if (status != 0)
@@ -413,7 +414,7 @@ int connectToServer(const char* hostname, int port, sockaddr_in_t *addr_out, int
 
         if (connect(socket_fd, addr->ai_addr, addr->ai_addrlen) == 0)
         {
-            memcpy(addr_out, addr->ai_addr, sizeof(sockaddr_in_t));
+            memcpy_s(addr_out, sizeof(sockaddr_in_t), addr->ai_addr, sizeof(sockaddr_in_t));
             break;
         }
 
@@ -437,7 +438,7 @@ SSL* setSecureConnection(int socket_fd)
         if(SSLconnection != NULL)
         {
             struct timeval oldVal;
-            memset(&oldVal, 0, sizeof(oldVal));
+            memset_s(&oldVal, sizeof(oldVal), 0);
             socklen_t sizetv = sizeof(oldVal);
             getsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &oldVal, &sizetv);
             

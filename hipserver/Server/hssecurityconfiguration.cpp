@@ -335,9 +335,9 @@ void SecurityConfigurationTable::ProcessCmd541(TpPdu* req)
         uint8_t statusBytes = 2;
         uint8_t dataSize = reqLen + statusBytes;
         uint8_t resBuffer[dataSize];
-        memset(resBuffer, 0, dataSize);
-
-        memcpy(resBuffer, req->RequestBytes(), reqLen);
+        memset_s(resBuffer, dataSize, 0);
+            
+        memcpy_s(resBuffer, TPPDU_MAX_DATALEN, req->RequestBytes(), reqLen);
 
         req->SetByteCount(2 /*RC+DC*/);
         req->ProcessOkResponse(RC_SUCCESS, resBuffer, dataSize);
@@ -533,9 +533,9 @@ void SecurityConfigurationTable::ProcessCmd542(TpPdu* req)
     uint8_t statusBytes = 2;
     uint8_t dataSize = reqLen + statusBytes;
     uint8_t resBuffer[dataSize];
-    memset(resBuffer, 0, dataSize);
+    memset_s(resBuffer, dataSize, 0);
     
-    memcpy(resBuffer, req->RequestBytes(), reqLen);
+    memcpy_s(resBuffer, dataSize, req->RequestBytes(), reqLen);
 
     req->SetByteCount(2 /*RC+DC*/);
     req->ProcessOkResponse(RC_SUCCESS, resBuffer, dataSize);

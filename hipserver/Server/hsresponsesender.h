@@ -42,7 +42,7 @@ public:
 
     IResponseSender()
     {
-        memset(&m_sem, 0, sizeof(m_sem));
+        memset_s(&m_sem, sizeof(m_sem), 0);
         sem_init(&m_sem, 0, 1);
     }
 
