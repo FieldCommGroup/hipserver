@@ -114,6 +114,16 @@ void print_help()
   printf("\nUse the -h command line option to enquire the command line options for any HART-IP Application program.\n");
 }
 
+const rsize_t maxarg = 255; //bytes
+// compare const with commandline argument
+int argcmp(const char *dest, const char *src)
+{
+    int diff = 0;
+
+    strcmp_s(dest, maxarg, src, &diff);
+    return diff;
+}
+
 uint8_t process_command_line(int argc, char* argv[])
 {
   uint8_t errval = NO_ERROR;
@@ -130,22 +140,23 @@ uint8_t process_command_line(int argc, char* argv[])
   // #6003
   uint8_t i = 1;
 
+
   while(i < argc)
   {
-    if (strcmp(argv[i], "-h") == 0)
+    if (argcmp(argv[i], "-h") == 0)
     {
       i++;
       print_help();
       exit(0);
     }
-    if (strcmp(argv[i], "-v") == 0)
+    if (argcmp(argv[i], "-v") == 0)
     {
       i++;
       printf("%s, %s\n", TOOL_NAME, TOOL_VERS);
       exit(0);
     }
 
-    if (strcmp(argv[i], "-psk") == 0)
+    if (argcmp(argv[i], "-psk") == 0)
     {
       clientEncryptionType = HARTIP_ENCRYPTION_TYPE_PSK;
       i++;
@@ -153,7 +164,7 @@ uint8_t process_command_line(int argc, char* argv[])
       continue;
     }
 
-    if (strcmp(argv[i], "-srp") == 0)
+    if (argcmp(argv[i], "-srp") == 0)
     {
       clientEncryptionType = HARTIP_ENCRYPTION_TYPE_SRP;
       i++;
@@ -162,9 +173,11 @@ uint8_t process_command_line(int argc, char* argv[])
       continue;
     }
 
-    if (strcmp(argv[i], "-p") == 0)
+    if (argcmp(argv[i], "-p") == 0)
     {
-    	if (strstr(argv[i-1], TOOL_NAME) != NULL)
+      char *substr;
+    	strstr_s(argv[i-1], maxarg, TOOL_NAME, sizeof(TOOL_NAME)+1, &substr);
+      if (substr != NULL)
     	{
     		i++;
     		//argv[0] is the program name atol = ascii to int
@@ -177,13 +190,13 @@ uint8_t process_command_line(int argc, char* argv[])
         i++;
     	}
     }
-    else if(strcmp(argv[i], "-c") == 0)
+    else if(argcmp(argv[i], "-c") == 0)
     {
       i++;
       maxSessionNumber = atol(argv[i]);
       i++;
     }
-    else if(strcmp(argv[i], "-f") == 0)
+    else if(argcmp(argv[i], "-f") == 0)
     {
       i++;
       SETTINGS_FOLDER_PATH = argv[i];
@@ -195,21 +208,21 @@ uint8_t process_command_line(int argc, char* argv[])
       }
       i++;
     }
-    else if(strcmp(argv[i], "-r") == 0)
+    else if(argcmp(argv[i], "-r") == 0)
     {
       i++;
       ReadOnlyCommandsManager::SetFileName(argv[i]);
       i++;
     }
-  #ifdef OPEN_SSL_SUPPORT
-    else if(strcmp(argv[i], "-C") == 0)
+#ifdef OPEN_SSL_SUPPORT
+    else if(argcmp(argv[i], "-C") == 0)
     {
       i++;
-      memset(pathToCertificate, 0, sizeof(pathToCertificate));
-      memcpy(pathToCertificate, argv[i], strlen(argv[i]) + 1);
+      memset_s(pathToCertificate, sizeof(pathToCertificate), 0);
+      memcpy_s(pathToCertificate, maxarg, argv[i], strnlen(argv[i], maxarg) + 1);
       i++;
     }
-  #endif
+#endif
     else
     {
     	dbgp_log("\nConnecting %s at port: %d\n", TOOL_NAME, portNum);
