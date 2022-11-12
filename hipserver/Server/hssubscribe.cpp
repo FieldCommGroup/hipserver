@@ -68,7 +68,9 @@ enum SubFlags
 bool SubscriptionPdu::IsBroadcastAddress()
 {
   uint8_t baddress[TPHDR_ADDRLEN_UNIQ] = {0};
-  return (memcmp(TargetUniqID(), baddress, TPHDR_ADDRLEN_UNIQ) == 0);
+  int diff;
+  memcmp_s(TargetUniqID(), TPHDR_ADDRLEN_UNIQ, baddress, TPHDR_ADDRLEN_UNIQ, &diff);
+  return diff == 0;
 }
 
 uint8_t *SubscriptionPdu::TargetUniqID()
@@ -105,7 +107,10 @@ bool Subscription::AddressMatch(uint8_t *address)
 	memcpy_s(a2, TPHDR_ADDRLEN_UNIQ, UniqueID, TPHDR_ADDRLEN_UNIQ);
 	a2[0] &= 0xBF;
 
-	bool match = (memcmp(a1, a2, TPHDR_ADDRLEN_UNIQ)==0);
+  int diff;
+	memcmp_s(a1, TPHDR_ADDRLEN_UNIQ, a2, TPHDR_ADDRLEN_UNIQ, &diff);
+  bool match = (diff == 0);
+
   return match;
 }
 
@@ -232,7 +237,6 @@ bool is_attached(const uint8_t *a)
     uint8_t buf2[len];
     memcpy_s(buf1, len, record.Address(), len);
     memcpy_s(buf2, len, a, len);
-    int x = memcmp(buf1, buf2, len );
 
     if (record.AddressMatch(a)) // first request bytes are 5-byte address.
     {

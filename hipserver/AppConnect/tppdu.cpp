@@ -76,8 +76,9 @@ bool TpPdu::AddressMatch(const uint8_t *a)
   buf1[0] &= 0x3f;
   buf2[0] &= 0x3f;
 
-  bool match = (memcmp(buf1, buf2, AddressLen()) == 0);
-  return match;
+  int diff;
+  memcmp_s(buf1, TPHDR_ADDRLEN_UNIQ, buf2, AddressLen(), &diff);
+  return diff == 0;
 }
 
 /*

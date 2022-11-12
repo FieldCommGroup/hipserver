@@ -162,8 +162,10 @@ void HARTIPConnection::StartTimer()
 }
 
 bool_t HARTIPConnection::IsSession(sockaddr_in_t& addres)
-{
-    return !memcmp(&m_clientAddr, &addres, sizeof(m_clientAddr)) ? TRUE : FALSE;
+{   
+    int diff;
+    memcmp_s(&m_clientAddr, sizeof(m_clientAddr), &addres, sizeof(m_clientAddr), &diff);
+    return diff == 0 ? TRUE : FALSE;
 }
 
 void HARTIPConnection::DeleteTimer()

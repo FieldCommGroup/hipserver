@@ -955,13 +955,14 @@ int verify_cookie(SSL* ssl, const unsigned char* cookie, unsigned int cookie_len
             HMAC(EVP_sha1(), (const void*)cookie_secret, COOKIE_SECRET_LENGTH,
                  (const unsigned char*)buffer, length, result, &resultlength);
             OPENSSL_free(buffer);
-
-            int cookieCheck = (cookie_len == resultlength) && memcmp(result, cookie, resultlength);
+            
+            int diff;
+            memcmp_s(result, EVP_MAX_MD_SIZE, cookie, resultlength, &diff);
+            int cookieCheck = (cookie_len == resultlength) && diff != 0;
             if (!cookieCheck)
             {
                 retVal = 1;
                 print_to_both(p_toolLogPtr, "Cookie check OK.\n");
-
             }
             else
             {
