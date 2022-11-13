@@ -392,9 +392,10 @@ int connectToServer(const char* hostname, int port, sockaddr_in_t *addr_out, int
     hints.ai_socktype = socktype;
     hints.ai_protocol = protocol;
     
-    char portString[6];
+    const int portSize = 6;
+    char portString[portSize];
     // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
-    sprintf(portString, "%d", port);
+    sprintf_s(portString, portSize, "%d", port);
     const int status = getaddrinfo(hostname, portString, &hints, &addrs);
     if (status != 0)
     {

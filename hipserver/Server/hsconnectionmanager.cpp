@@ -72,17 +72,19 @@ uint16_t HARTIPConnection::NextSequnce()
 
 char* HARTIPConnection::GetSessionInfoString()
 {
-    static char returnval[32];
+    const int valSize = 32;
+    static char returnval[valSize];
     // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
-    sprintf(returnval, "%s:%d", inet_ntoa(m_clientAddr.sin_addr), ntohs(m_clientAddr.sin_port));
+    sprintf_s(returnval, valSize, "%s:%d", inet_ntoa(m_clientAddr.sin_addr), ntohs(m_clientAddr.sin_port));
     return returnval;
 }
 
 char* HARTIPConnection::GetSessionIPv4()
 {
-    static char returnval[24];
+    const int valSize = 24;
+    static char returnval[valSize];
     // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
-    sprintf(returnval, "%s", inet_ntoa(m_clientAddr.sin_addr));
+    sprintf_s(returnval, valSize, "%s", inet_ntoa(m_clientAddr.sin_addr));
     return returnval;
 }
 

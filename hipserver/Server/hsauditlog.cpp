@@ -548,7 +548,7 @@ char* AuditLog::GetSysLogString(StatisticSession *session)
     memset_s(resultString, SYSLOG_STRING_LENGTH, 0);
 
     // vulnerability check by inspection is OK:  this method is not accessible by the client  --  tjohnston 11/09/2021
-    sprintf(resultString, "%s:%hu: %hu, %hu, %hu, %hu", inet_ntoa(session->m_address.sin_addr), session->m_address.sin_port,
+    sprintf_s(resultString, SYSLOG_STRING_LENGTH, "%s:%hu: %hu, %hu, %hu, %hu", inet_ntoa(session->m_address.sin_addr), session->m_address.sin_port,
                      session->m_status, session->m_stxCounter, session->m_ackCounter, session->m_backCounter);
 
     return resultString;

@@ -124,6 +124,9 @@ unsigned gpioHardwareRevision(void)
       {
          if (!strncasecmp("revision", buf, 8))
          {
+            // Vulnerability by inspection:
+            // no user accessible parameters are used in this sscanf statement,
+            // there is no vulnerability.
             if (sscanf(buf+strnlen(buf, sizeof(buf))-(chars+1),
                "%x%c", &rev, &term) == 2)
             {

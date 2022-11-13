@@ -326,12 +326,12 @@ void *mainThrFunc(void *thrName)
   std::string checkCommand = "lsof -i:" + std::to_string(portNum) +" | grep dhclient  | awk '{print $2}' | uniq";
   int n1 = checkCommand.length();
   char checkCommandArray[n1 + 1];
-  strcpy(checkCommandArray, checkCommand.c_str());
+  strcpy_s(checkCommandArray, n1+1, checkCommand.c_str());
 
   std::string killCommand = checkCommand + " | xargs kill -9";
   int n2 = killCommand.length();
   char killCommandArray[n2 + 1];
-  strcpy(killCommandArray, killCommand.c_str());
+  strcpy_s(killCommandArray, n2+1, killCommand.c_str());
   
   do
   {
