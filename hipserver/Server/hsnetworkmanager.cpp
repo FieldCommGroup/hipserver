@@ -122,7 +122,7 @@ errVal_t NetworkManager::CreateNewProcessor(uint16_t port, TypeConnection type, 
     std::string check = "lsof -i:" + std::to_string(port) +" | grep dhclient | awk '{print $2}' | uniq";
     int n1 = check.length();
     char checkArr[n1 + 1];
-    strcpy(checkArr, check.c_str());
+    strcpy_s(checkArr, n1 + 1, check.c_str());
 
     std::string runCheck = execCommand(checkArr);
     if (runCheck != "")
@@ -130,7 +130,7 @@ errVal_t NetworkManager::CreateNewProcessor(uint16_t port, TypeConnection type, 
         std::string killPort = check + " | xargs kill -9";
         int n2 = killPort.length();
         char killPortArr[n2 + 1];
-        strcpy(killPortArr, killPort.c_str());
+        strcpy_s(killPortArr, n2 + 1, killPort.c_str());
 
         int status = 0;
         pid_t pid;
@@ -333,7 +333,7 @@ void NetworkManager::ProcessCmd538(TpPdu* req)
 	uint8_t statusBytes = 2;
 	uint8_t dataSize = portsLen + statusBytes;
     uint8_t resBuffer[dataSize];
-    memset(resBuffer, 0, dataSize);
+    memset_s(resBuffer, dataSize, 0);
 
     resBuffer[0] = portUdp >> 8;
     resBuffer[1] = portUdp & 0x0FF;
@@ -363,7 +363,7 @@ void NetworkManager::ProcessCmd539(TpPdu* req)
 	uint8_t statusBytes = 2;
 	uint8_t dataSize = portLen + statusBytes;
     uint8_t resBuffer[dataSize];
-    memset(resBuffer, 0, dataSize);
+    memset_s(resBuffer, dataSize, 0);
 
     resBuffer[0] = port >> 8;
     resBuffer[1] = port & 0x0FF;
@@ -397,7 +397,7 @@ void NetworkManager::ProcessCmd540(TpPdu* req)
 	uint8_t statusBytes = 2;
 	uint8_t dataSize = portLen + statusBytes;
     uint8_t resBuffer[dataSize];
-    memset(resBuffer, 0, dataSize);
+    memset_s(resBuffer, dataSize, 0);
 
     resBuffer[0] = port >> 8;
     resBuffer[1] = port & 0x0FF;
