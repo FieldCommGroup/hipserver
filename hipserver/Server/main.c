@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,12 +41,20 @@
 #include "hsudp.h"
 #include "hssems.h"
 #include "hssigs.h"
+#include "hshostnamesystem.h"
+#include "hsnetworkmanager.h"
 #include "hssubscribe.h"
-
+#include "hsconnectionmanager.h"
 #include "serverstate.h"
-
+#include "hsauditlog.h"
 #include "safe_lib.h"
 #include "snprintf_s.h"
+#include "hssyslogger.h"
+#include "hssettingshandler.h"
+#include "onetcpprocessor.h"
+#include "hsreadonlycommandsmanager.h"
+#include "factory_reset.h"
+#include <stdexcept>
 
 enum ServerState eServerState = SRVR_INIT;
 enum AppState eAppState = APP_STOP;
@@ -54,11 +62,18 @@ enum AppLaunch eAppLaunch = LNCH_MANUAL;
 
 char AppCommandLine[500] = "";
 
-
 /*
  * Global Data
  */
 uint16_t portNum = HARTIP_SERVER_PORT;
+uint16_t maxSessionNumber = DEFINE_MAX_COUNT_SESSION;
+char     pathToCertificate[255] = "";
+std::string SETTINGS_FOLDER_PATH = "/var/lib/hipServer";
+std::string SETTINGS_FILE_NAME = "hipServer.conf";
+
+// Set default encryption type to PSK
+uint8_t clientEncryptionType = HARTIP_ENCRYPTION_TYPE_PSK;
+
 /*****************************
  *  Function Implementations
  *****************************/
@@ -71,6 +86,13 @@ void print_help()
   printf("\nOptions:\n");
   printf(" -h Print command usage information and quit.\n");
   printf(" -v Print version number and quit.\n");
+  printf(" -c Maximum count of client.\n");
+#ifdef OPEN_SSL_SUPPORT
+  printf(" -C Path to tls certificate file.\n");
+#endif
+  printf(" -p port to listen for UDP and TCP\n");
+  printf(" -psk,-srp  Specify encryption type with Client.\n");
+  printf(" Default is PSK if no encryption type is specified.\n");
   printf("\nHART-IP Application command line:\n");
   printf(" The hipserver program is always paired with a HART-IP application program.\n");
   printf(" The hipserver manages HART-IP communications with a client(s).\n");
@@ -92,6 +114,16 @@ void print_help()
   printf("\nUse the -h command line option to enquire the command line options for any HART-IP Application program.\n");
 }
 
+const rsize_t maxarg = 255; //bytes
+// compare const with commandline argument
+int argcmp(const char *dest, const char *src)
+{
+    int diff = 0;
+
+    strcmp_s(dest, maxarg, src, &diff);
+    return diff;
+}
+
 uint8_t process_command_line(int argc, char* argv[])
 {
   uint8_t errval = NO_ERROR;
@@ -108,23 +140,44 @@ uint8_t process_command_line(int argc, char* argv[])
   // #6003
   uint8_t i = 1;
 
+
   while(i < argc)
   {
-    if (strcmp(argv[i], "-h") == 0)
+    if (argcmp(argv[i], "-h") == 0)
     {
       i++;
       print_help();
       exit(0);
     }
-    if (strcmp(argv[i], "-v") == 0)
+    if (argcmp(argv[i], "-v") == 0)
     {
       i++;
       printf("%s, %s\n", TOOL_NAME, TOOL_VERS);
       exit(0);
     }
-    if (strcmp(argv[i], "-p") == 0)
+
+    if (argcmp(argv[i], "-psk") == 0)
     {
-    	if (strstr(argv[i-1], TOOL_NAME) != NULL)
+      clientEncryptionType = HARTIP_ENCRYPTION_TYPE_PSK;
+      i++;
+      printf("User selected encryption type PSK\n");
+      continue;
+    }
+
+    if (argcmp(argv[i], "-srp") == 0)
+    {
+      clientEncryptionType = HARTIP_ENCRYPTION_TYPE_SRP;
+      i++;
+      printf("User selected encryption type SRP\n");
+
+      continue;
+    }
+
+    if (argcmp(argv[i], "-p") == 0)
+    {
+      char *substr;
+    	strstr_s(argv[i-1], maxarg, TOOL_NAME, sizeof(TOOL_NAME)+1, &substr);
+      if (substr != NULL)
     	{
     		i++;
     		//argv[0] is the program name atol = ascii to int
@@ -133,20 +186,45 @@ uint8_t process_command_line(int argc, char* argv[])
     		{ // -p used but invalid number provided
     			portNum = HARTIP_SERVER_PORT;
     			dbgp_log("\nPrivleged or invalid port: %d\nUsing default port: %d\n",atol(argv[i]),portNum);
-    			i++;
     		}
-    		else
-    		{
-    			i++;
-    			dbgp_log("\nConnecting %s at port: %d\n", TOOL_NAME, portNum);
-    		}
-			break;
+        i++;
     	}
-    	break;
     }
+    else if(argcmp(argv[i], "-c") == 0)
+    {
+      i++;
+      maxSessionNumber = atol(argv[i]);
+      i++;
+    }
+    else if(argcmp(argv[i], "-f") == 0)
+    {
+      i++;
+      SETTINGS_FOLDER_PATH = argv[i];
+      size_t pos = SETTINGS_FOLDER_PATH.rfind("/");
+      if (pos != SETTINGS_FOLDER_PATH.npos && pos != SETTINGS_FOLDER_PATH.size() - 1)
+      {
+          SETTINGS_FILE_NAME = SETTINGS_FOLDER_PATH.substr(pos + 1, SETTINGS_FOLDER_PATH.size() - pos - 1);
+          SETTINGS_FOLDER_PATH = SETTINGS_FOLDER_PATH.erase(pos, SETTINGS_FOLDER_PATH.size() - pos);
+      }
+      i++;
+    }
+    else if(argcmp(argv[i], "-r") == 0)
+    {
+      i++;
+      ReadOnlyCommandsManager::SetFileName(argv[i]);
+      i++;
+    }
+#ifdef OPEN_SSL_SUPPORT
+    else if(argcmp(argv[i], "-C") == 0)
+    {
+      i++;
+      memset_s(pathToCertificate, sizeof(pathToCertificate), 0);
+      memcpy_s(pathToCertificate, maxarg, argv[i], strnlen(argv[i], maxarg) + 1);
+      i++;
+    }
+#endif
     else
     {
-    	i = 1;
     	dbgp_log("\nConnecting %s at port: %d\n", TOOL_NAME, portNum);
     	break;
     }
@@ -210,17 +288,29 @@ void end_all(void)
     }
   }
 
+  NetworkManager::Destroy();
+
+  ConnectionsManager::DeleteManager();
+
+  OneTcpProcessor::Cleanup();
+  UdpProcessor::Cleanup();
+  CleanupSSL();
+
   /* Generic shutdown operations */
   delete_threads();
+
   delete_semaphores();
 
   /* HART-IP Server specific shutdown_hs operations */
   close_mqueues();
-  close_socket();  // TODO multiple clients
   close_hsLog();
 
   /* Close system log at the end */
   close_toolLog();
+
+  /* Close linux syslog at the end */
+  disconnectFromSyslog();
+  destroyHipSyslogger();
 }
 
 void *mainThrFunc(void *thrName)
@@ -233,8 +323,28 @@ void *mainThrFunc(void *thrName)
   dbgp_init("\n==================================\n");
   dbgp_logdbg("Starting %s...\n", (char * )thrName);
 
+  std::string checkCommand = "lsof -i:" + std::to_string(portNum) +" | grep dhclient  | awk '{print $2}' | uniq";
+  int n1 = checkCommand.length();
+  char checkCommandArray[n1 + 1];
+  strcpy_s(checkCommandArray, n1+1, checkCommand.c_str());
+
+  std::string killCommand = checkCommand + " | xargs kill -9";
+  int n2 = killCommand.length();
+  char killCommandArray[n2 + 1];
+  strcpy_s(killCommandArray, n2+1, killCommand.c_str());
+  
   do
   {
+    std::string execResults = execCommand(checkCommandArray);
+
+    if(execResults != "")
+    {
+      print_to_both(p_toolLogPtr, "\nKilling all active dhclient instances on the same port before run...\n");
+      
+      system(killCommandArray);
+	  
+      script_sleep(1); //putting sleep because the process might not be totally killed before hipserver tries to use the port
+    }
     errval = initialize_hs_signals();
     if (errval != NO_ERROR)
     {
@@ -296,19 +406,28 @@ void app_init(char *appName)
   int32_t retVal;
   const char *mainThrName = "Main Thread";
 
+  InitSSL();
+  OneTcpProcessor::Init();
+  UdpProcessor::Init();
+  // init log subsystem
+  initHipSyslogger(pathToCertificate);
+  connect2HipSyslogger();
   do
   {
     clear_attached_devices();
 
     retVal = open_toolLog();
+
     if (retVal != NO_ERROR)
     {
       dbgp_logdbg("\n%s log could not be opened!!\n", TOOL_NAME);
     }
+#ifdef OPEN_SSL_SUPPORT
+    dbgp_log("HART-IP Server v.%s with OpenSSL (TP10300)\n\n", TOOL_VERS);
+#else
+	dbgp_log("HART-IP Server v.%s  (TP10300)\n\n", TOOL_VERS);
+#endif
 
-
-
-    dbgp_log("HART-IP Server v.%s  (TP10300)\n\n", TOOL_VERS);
 
     /*
      * end_all() called after exit() is called
@@ -317,6 +436,13 @@ void app_init(char *appName)
     if (retVal != NO_ERROR)
     {
       fprintf(p_toolLogPtr, "\nExit function could not be set!!!\n");
+      break;
+    }
+
+    retVal = ConnectionsManager::CreateManager(maxSessionNumber);
+    if(retVal != NO_ERROR)
+    {
+       fprintf(p_toolLogPtr, "\nSession manager could not be create!\n");
       break;
     }
 
@@ -340,6 +466,13 @@ void app_init(char *appName)
     /* Wait till main thread is complete */
     dbgp_sem("\n=================================\n");
     dbgp_sem("Waiting in main() for the end\n");
+    AuditLogger->ServerStarted(portNum);
+
+    SettingsHandler settingsHandler;
+    settingsHandler.LoadSettings();
+
+    log2HipSyslogger(6, 100, 8, NULL, "Device startup/power up");
+
     retVal = sem_wait_nointr(p_semEndAll);  // not interruptible
     if (retVal == LINUX_ERROR)
     {
@@ -355,12 +488,44 @@ void app_init(char *appName)
   dbgp_log( "(it may take a few seconds)\n");
   dbgp_log( "************************************************\n");
   dbgp_log( "\n");
+  system("dhclient -r;dhclient");
   script_sleep(2);
   exit(1);
 }
 
 int32_t main(int argc, char *argv[])
 {
+// Factory Reset detection doesn't apply to x86 since it uses
+//  raspPI3 hardware
+#if !defined(__x86_64__)
+  // Initialize GPIO for reset and write_protect (GPIO 2 and GPIO3) both pins are pulled high on PI3B+ board
+  if (gpioInitialise() < 0)
+  {
+	printf("WARNING: gpio pin initialization failed. factory_reset or write_protect state may not be correct!\n");
+  }
+
+// Determine if Factory reset condition exists on the PI3B+ board (see factory_reset.c for implementation)
+  //   if so remove configuration files for hipserver and hipflow app
+  
+  if (reset())
+  {
+    //NOTE: don't fail on nativeFlow.conf missing . Hipflow app may not be used with hipserver in all cases.
+    printf("Factory Reset condition detected. Removing configuration files\n");
+
+    if (remove("/etc/nativedev/nativeFlow.conf") == 0)
+	printf("/etc/nativedev/nativeFlow.conf deleted successfully\n");
+    else
+	printf("unable to delete the file. May already be gone or not running hipflow app here\n");
+
+
+    if (remove("/var/lib/hipServer/hipServer.conf") == 0)
+	printf("/var/lib/hipServer/hipServer.conf file deleted successfully\n");
+    else
+	printf("unable to delete the file. May already be gone.\n");
+
+  }
+#endif
+
 
   uint8_t errval = process_command_line(argc, argv);
 
@@ -383,5 +548,5 @@ int32_t main(int argc, char *argv[])
     app_init(argv[0]);
   }
   // else nothing
-}
 
+}

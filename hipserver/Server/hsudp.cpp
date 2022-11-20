@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,310 +35,508 @@
 #include "hsudp.h"
 #include "hsrequest.h"
 #include "hssubscribe.h"
+#include "hssettings.h"
 #include "app.h"
-
+#include "hscommands.h"
+#include "hsauditlog.h"
+#include "hssecurityconfiguration.h"
+#include <algorithm>
+#include "hsnetworkmanager.h"
 /************
  *  Globals
  ************/
-
 extern uint16_t portNum;
 extern int connectionType;
-
-/************************************
- *  Private variables for this file
- ************************************/
-hartip_session_t ClientSessTable[HARTIP_NUM_SESS_SUPPORTED];
-hartip_session_t *pCurrentSession = ClientSessTable;
-
-/*
- *  If there is an error in the session initiate request, then the server
- *  must answer the request with an error response, but there will be no
- *  entry into the ClientSessTable.  In this case, we construct an ErrorSession
- *  from the socket_fd (same is used by all sessions) and the client address
- *  returned from the wait_for_client_req().
- */
-hartip_session_t ErrorSession;
 
 /**********************************************
  *  Private function prototypes for this file
  **********************************************/
-static errVal_t create_udpserver_socket(uint16_t serverPortNum,
-		int32_t *pSocketFD);
-static errVal_t handle_sess_close_req(hartip_msg_t *p_request,
-		hartip_msg_t *p_response, uint8_t sessNum);
-static errVal_t handle_sess_init_req(hartip_msg_t *p_request,
-		hartip_msg_t *p_response, sockaddr_in_t client_addr);
-static errVal_t handle_token_passing_req(hartip_msg_t *p_request, uint8_t sessNum);
-static errVal_t handle_keepalive_req(hartip_msg_t *p_request,
-		hartip_msg_t *p_response, uint8_t sessNum);
-static bool_t is_client_sess_valid(sockaddr_in_t *client_sockaddr,
-		uint8_t *pSessNum);
-static bool_t is_session_avlbl(uint8_t *pSessNum);
-static errVal_t parse_client_req(uint8_t *pduHartIp, ssize_t lenPdu,
-		hartip_msg_t *p_parsedReq);
+static errVal_t create_udpserver_socket(uint16_t serverPortNum, int32_t *pSocketFD);
+static bool_t is_client_sess_valid(sockaddr_in_t *client_sockaddr, uint8_t *pSessNum);
 static void print_socket_addr(sockaddr_in_t socket_addr);
-static errVal_t wait_for_client_req(uint8_t *pduHartIp, ssize_t *lenPdu,
-		sockaddr_in_t *client_sockaddr);
 static void reset_client_info(void);
 static void set_inactivity_timer();
-int process_cmd258(hsmessage_t *hsmsg);
-int process_cmd257(hsmessage_t *hsmsg);
+/****************************************************
+ *          Private functions for this file
+ ****************************************************/
+/**
+ * create_udpserver_socket(): Create HART-IP UDP Server Socket
+ */
 
-/*****************************
- *  Function Implementations
- *****************************/
-void clear_session_info(uint8_t sessNum)
-{
-	const char *funcName = "clear_session_info";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	if (sessNum < HARTIP_NUM_SESS_SUPPORTED)
-	{
-		if (ClientSessTable[sessNum].id != HARTIP_SESSION_ID_INVALID)
-		{
-			ClientSessTable[sessNum].id = HARTIP_SESSION_ID_INVALID;
-			ClientSessTable[sessNum].seqNumber = 0;
-			ClientSessTable[sessNum].msInactTimer = 0;
-
-			dbgp_logdbg("Session %d is terminated.\n", sessNum);
-		}
-	}
-	else
-	{
-		dbgp_logdbg("Invalid session number (%d)\n", sessNum);
-		dbgp_logdbg(" Highest session number supported = %d\n",
-		HARTIP_NUM_SESS_SUPPORTED - 1);
-	}
-}
-
-void close_socket(void)
-{
-	const char *funcName = "close_socket";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	/* There is only one server socket */
-	int32_t srvrSocketFD = ClientSessTable[0].server_sockfd;// TODO multiple clients
-
-	if (srvrSocketFD != HARTIP_SOCKET_FD_INVALID)
-	{
-		dbgp_logdbg("----------------------\n");
-		dbgp_logdbg("Closing Server Socket\n");
-		if (close(srvrSocketFD) == LINUX_ERROR)
-		{
-			dbgp_hs("System error (%d) while closing socket\n", errno);
-		}
-		else
-		{
-			dbgp_logdbg("Socket closed\n");
-			dbgp_logdbg("----------------------\n");
-		}
-		reset_client_info();
-	} // if (srvrSocketFD != HARTIP_SOCKET_FD_INVALID)
-}
-
-errVal_t create_socket(void)
+static errVal_t create_udpserver_socket(uint16_t serverPortNum, int32_t *pSocketFD,
+                                        sockaddr_in_t*  pServer_addr)
 {
 	errVal_t errval = NO_ERROR;
 
-	const char *funcName = "create_socket";
+	const char *funcName = "create_udpserver_socket";
 	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	reset_client_info();
 
 	do
 	{
-		dbgp_init("  --------------------------------\n");
-		dbgp_init("  Creating UDP Socket for %s...\n", TOOL_NAME);
+		int32_t socketFD = socket(AF_INET, SOCK_DGRAM, 0);
 
-		int32_t serverSocketFD = HARTIP_SOCKET_FD_INVALID;
-
-		// #6003
-		errval = create_udpserver_socket(portNum, &serverSocketFD);
-		if (errval != NO_ERROR)
+		if (socketFD == LINUX_ERROR)
 		{
-			print_to_both(p_toolLogPtr, "  Failed to Create Socket\n");
+			errval = SOCKET_CREATION_ERROR;
+			print_to_both(p_toolLogPtr, "System Error %d for socket()\n",
+			errno);
 			break;
 		}
-		dbgp_init("  Socket Created\n");
-		dbgp_init("  --------------------------------\n");
 
-		for (uint8_t i = 0; i < HARTIP_NUM_SESS_SUPPORTED; i++)
+		const int on = 1;
+		const int off = 0;
+
+		setsockopt(socketFD, SOL_SOCKET, SO_REUSEADDR, (const void*)&on, (socklen_t)sizeof(on));
+
+		sockaddr_in_t server_addr;
+		memset_s(&server_addr, sizeof(server_addr), 0);
+
+		server_addr.sin_family = AF_INET;
+		server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		server_addr.sin_port = htons(serverPortNum);
+        print_to_both(p_toolLogPtr, "UdpSocket: %d\n", socketFD);
+		dbgp_logdbg("\nServer Socket using port %d:\n", serverPortNum);
+		print_socket_addr(server_addr);
+
+		if (bind(socketFD, (struct sockaddr *) &server_addr, sizeof(server_addr)) == LINUX_ERROR)
 		{
-			ClientSessTable[i].server_sockfd = serverSocketFD;
+			if (errno == EINVAL)
+			{
+				errval = SOCKET_PORT_USED_ERROR;
+				print_to_both(p_toolLogPtr,
+						"System Error %d for socket bind()\n", errno);
+				break;
+			}
+			else
+			{
+				errval = SOCKET_BIND_ERROR;
+				print_to_both(p_toolLogPtr,
+						"System Error %d for socket bind()\n", errno);
+				break;
+			}
+		} // if bind()
+		else
+		{
+			*pSocketFD = socketFD;
+            memcpy_s(pServer_addr, sizeof(sockaddr_in_t), &server_addr, sizeof(sockaddr_in_t));
+
+			int buffsize = HARTIP_MAX_MSG_LEN;
+			//setsockopt(socketFD, SOL_SOCKET, SO_RCVBUF, &buffsize, sizeof(buffsize));
+			//setsockopt(socketFD, SOL_SOCKET, SO_SNDBUF, &buffsize, sizeof(buffsize));
 		}
 	} while (FALSE);
 
 	return (errval);
 }
 
-void *socketThrFunc(void *thrName)
+static void print_socket_addr(sockaddr_in_t socket_addr)
 {
-	const char *funcName = "socketThrFunc";
+	dbgp_logdbg("Socket Address:\n");
+	dbgp_logdbg(" Family: 0x%.4X, Port: 0x%.4X, Addr: 0x%.8X\n",
+			socket_addr.sin_family, socket_addr.sin_port,
+			socket_addr.sin_addr.s_addr);
+}
+
+void UdpProcessor::Run()
+{
+	m_isRunning = TRUE;
+	const char *funcName = __func__;
 	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
 
-	dbgp_init("Starting %s...\n", (char * )thrName);
-
-	uint8_t reqBuff[HS_MAX_BUFFSIZE];
-	errVal_t errval;
-	ssize_t pduLen = 0;
-	hartip_msg_t reqFromClient;
-	hartip_msg_t rspToClient;
-
-	/* Start with a clean slate */
-	memset_s(reqBuff, sizeof(reqBuff), 0);
-	memset_s(&reqFromClient, sizeof(reqFromClient), 0);
-	memset_s(&rspToClient, sizeof(rspToClient), 0);
-
-	sockaddr_in_t client_sockaddr;
-	uint8_t sessNum = 0;
-	pCurrentSession = &ClientSessTable[sessNum];
+	if(create_udpserver_socket(m_port, &m_socket, &m_server_addr) != NO_ERROR)
+	{
+		Stop();
+	}
 
 	dbgp_hs("\n===================\n");
 
-	while (TRUE) // thread runs forever
+	HandlerMessages::RunUdp();
+
+	close(m_socket);
+}
+
+void UdpProcessor::ReconfigureServerSocket()
+{
+	close(m_socket);
+	
+   	 dbgp_logdbg("Clearing server socket  \n");
+	if(create_udpserver_socket(m_port, &m_socket, &m_server_addr) != NO_ERROR)
 	{
-		int32_t srvrSocketFD = pCurrentSession->server_sockfd;
-		if (srvrSocketFD == HARTIP_SOCKET_FD_INVALID)
-		{
-			dbgp_init("Server Socket does not exist!!\n");
-			continue;
-		}
-
-		// Clear buffer for receiving next client request
-		memset_s(reqBuff, sizeof(reqBuff), 0);
-
-		errval = wait_for_client_req(reqBuff, &pduLen, &client_sockaddr);
-		if (errval != NO_ERROR)
-		{
-			dbgp_logdbg("Receive Error\n");
-			continue;
-		}
-		// Clear struct before usage
-		memset_s(&reqFromClient, sizeof(reqFromClient), 0);
-
-		errval = parse_client_req(reqBuff, pduLen, &reqFromClient);
-		if (errval != NO_ERROR)
-		{
-			print_to_both(p_toolLogPtr, "Parsing Error in %s\n", funcName);
-			continue;
-		}
-		dbgp_logdbg("Client request parsed OK.\n");
-
-		HARTIP_MSG_ID thisMsgId = reqFromClient.hipHdr.msgID;
-
-		/* Validate client session if not a request to initiate session */
-		if (thisMsgId != HARTIP_MSG_ID_SESS_INIT)
-		{
-			bool_t isValidSess = is_client_sess_valid(&client_sockaddr,
-					&sessNum);
-			if (!isValidSess)
-			{
-				print_to_both(p_toolLogPtr, "Client session invalid!!\n");
-				script_sleep(3);
-				continue;
-			}
-			pCurrentSession = &ClientSessTable[sessNum];
-			dbgp_hs("Current Session #%d\n", sessNum);
-		}
-
-		// Clear struct before usage
-		memset_s(&rspToClient, sizeof(rspToClient), 0);
-
-		dbgp_logdbg("#*#*#*# Server recd a ");
-
-		switch (thisMsgId)
-		{
-		case HARTIP_MSG_ID_SESS_INIT:
-			dbgp_logdbg("Session Initiate Request\n");
-			errval = handle_sess_init_req(&reqFromClient, &rspToClient,
-					client_sockaddr);
-			if (errval == NO_ERROR)
-			{
-				dbgp_logdbg("\nHART-IP Initiate Session...  Session %d is created.\n", pCurrentSession->sessNum);
-			}
-
-			// pCurrentSession is set in handle_sess_init_req()
-
-			hsmessage_t hsmsg;
-			hsmsg.pSession = pCurrentSession;
-			hsmsg.message = rspToClient;
-			errval = send_rsp_to_client(&rspToClient, pCurrentSession);
-			if (errval != NO_ERROR)
-			{
-				print_to_both(p_toolLogPtr, "Error in send_rsp_to_client()\n");
-			}
-			break;
-		case HARTIP_MSG_ID_SESS_CLOSE:
-			dbgp_logdbg("HART-IP Close Session...  ");
-			errval = handle_sess_close_req(&reqFromClient, &rspToClient,
-					sessNum);
-			if (errval != NO_ERROR)
-			{
-				print_to_both(p_toolLogPtr, "  Failed to close session\n");
-			}
-			break;
-		case HARTIP_MSG_ID_TP_PDU:
-			dbgp_logdbg("Token-Passing PDU\n");
-			errval = handle_token_passing_req(&reqFromClient, sessNum);
-			if (errval != NO_ERROR)
-			{
-				print_to_both(p_toolLogPtr,
-						"Error in handle_token_passing_req()\n");
-			}
-			break;
-		case HARTIP_MSG_ID_KEEPALIVE:
-			dbgp_logdbg("Keep-Alive PDU\n");
-			errval = handle_keepalive_req(&reqFromClient, &rspToClient, sessNum);
-			if (errval != NO_ERROR)
-			{
-				print_to_both(p_toolLogPtr,
-						"Error in handle_keepalive_req()\n");
-			}
-			break;
-		case HARTIP_MSG_ID_DISCOVERY:
-			dbgp_init("Keep-Alive/Discovery msg\n");
-			break;
-		default:
-			/* Should never come here if parse_client_req() worked */
-			print_to_both(p_toolLogPtr,
-					"HART-IP Invalid Msg ID (%d) in Client Request.\n", thisMsgId);
-			break;
-		} /* switch */
-
-		set_inactivity_timer();
-	} /* while (TRUE) */
-
-	return NULL;
+		Stop();
+	}
+	
+	
 }
 
-errVal_t send_burst_to_client(hartip_msg_t *p_response, int sessnum)
+errVal_t UdpProcessor::ReadSocket(int32_t socket, uint8_t *p_reqBuff, ssize_t *p_lenPdu,
+        sockaddr_in_t *p_client_sockaddr)
 {
-	// add the seq # for the correct client, then increment it
-	p_response->hipHdr.seqNum = ClientSessTable[sessnum].seqNumber++;
+    errVal_t errval = NO_ERROR;
+    
 
-	return send_rsp_to_client(p_response, &ClientSessTable[sessnum]);
+    socklen_t socklen = sizeof(sockaddr_in_t);
+
+
+    dbgp_logdbg("UDP ReadSocket(): MSG_PEEK %d\n", m_socket);
+    print_socket_addr(*p_client_sockaddr);
+    *p_lenPdu = recvfrom(m_socket, p_reqBuff, HARTIP_MAX_PYLD_LEN, MSG_PEEK, (struct sockaddr *) p_client_sockaddr, &socklen);
+    dbgp_logdbg("UDP ReadSocket(): Payload received %d\n", m_socket);
+
+    if (*p_lenPdu == LINUX_ERROR)
+	{
+		errval = SOCKET_RECVFROM_ERROR;
+		print_to_both(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
+        return errval;
+	}
+
+    print_to_both(p_toolLogPtr,"\nSIZE = %d", *p_lenPdu);
+    HARTIPConnection *connection;
+	bool_t isValidSess = m_connectionsManager->IsSessionExisting(*p_client_sockaddr, &connection);
+
+    if(isValidSess == TRUE)
+    {
+        OneUdpProcessor *udpSender = dynamic_cast<OneUdpProcessor*>(connection);
+        errval = udpSender->ReadSocket(p_reqBuff, p_lenPdu);
+    }
+    else
+    {
+        *p_lenPdu = recvfrom(m_socket, p_reqBuff,HARTIP_MAX_PYLD_LEN, 0, (struct sockaddr *) p_client_sockaddr, &socklen);
+        print_to_both(p_toolLogPtr,"recv from by udp(%d)", *p_lenPdu);
+    }
+
+	if (*p_lenPdu == LINUX_ERROR)
+	{
+		errval = SOCKET_RECVFROM_ERROR;
+		print_to_both(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
+	}
+    
+	return errval;
 }
 
-/**
- * send_rsp_to_client()
- *         send HART-IP response to the client
- *
- */
-errVal_t send_rsp_to_client(hartip_msg_t *p_response,
-		hartip_session_t *pSession)
+void UdpProcessor::TerminateSocket()
 {
-	const char *funcName = "send_rsp_to_client";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
+	shutdown(m_socket, SHUT_RDWR);
+}
 
+void UdpProcessor::DeleteSession(HARTIPConnection* session)
+{
+	OneUdpProcessor* sender = dynamic_cast<OneUdpProcessor*>(session);
+	if(sender!=NULL)
+		m_commandManager.RemoveCommandsBySender(sender);
+
+	sender->Wait();
+    std::vector<OneUdpProcessor*>::iterator finded = std::find(m_clients.begin(), m_clients.end(), sender);
+    if(finded != m_clients.end())
+        m_clients.erase(finded);
+	SubscribesTable::Instance()->RemoveSubscriber(sender);
+	sender->DeleteTimer();
+	delete sender;
+}
+
+IResponseSender* UdpProcessor::GetCurrentResponse()
+{
+	if (m_currentSession != NULL)
+	{
+		m_currentSession->SetNoResponse(m_noResponse);
+	}
+	return m_currentSession;
+}
+
+HARTIPConnection* UdpProcessor::GetCurrentSession()
+{
+	return m_currentSession;
+}
+
+errVal_t UdpProcessor::RestartTimerCurrentSession()
+{
+	if(m_currentSession != NULL)
+	{
+		m_currentSession->StartTimer();
+	}
+}
+bool_t UdpProcessor::GetCurrentSession(sockaddr_in_t& address)
+{
+	HARTIPConnection* connection = NULL;
+	bool_t isValidSess = m_connectionsManager->IsSessionExisting(address, &connection);
+
+	if(connection != NULL)
+    {
+        m_currentSession = dynamic_cast<OneUdpProcessor*>(connection);
+    }
+	return isValidSess;
+
+}
+errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, sockaddr_in_t& address)
+{
+    hartip_hdr_t* p_hartip_hdr = &p_req->hipHdr;
+    uint8_t version = p_hartip_hdr->version;
+    bool invalidVersion = version > HARTIP_PROTOCOL_VERSION;
+
+	OneUdpProcessor* newSender = new OneUdpProcessor(invalidVersion ? HARTIP_PROTOCOL_VERSION : version);
+	newSender->SetSocket(m_socket);
+
+	time_t timeCreate;
+	time(&timeCreate);
+
+	errVal_t errval = m_connectionsManager->InitSession(p_req, p_res,
+			address, newSender, this, UDP, m_noResponse, m_port);
+	if (errval == NO_ERROR)
+	{
+        // set version per client
+        hartip_hdr_t* p_reqHdr = &p_req->hipHdr;
+
+        m_version = invalidVersion ? HARTIP_PROTOCOL_VERSION : p_reqHdr->version;
+
+        if (invalidVersion)
+        {
+            p_res->hipHdr.version = HARTIP_PROTOCOL_VERSION;
+            p_res->hipHdr.status = HARTIP_SESS_ERR_VERSION_NOT_SUPPORTED;
+        }
+
+		dbgp_logdbg("\nHART-IP Initiate Session...  Session %d is created.\n", newSender->GetSessionNumber());
+		m_currentSession = newSender;
+	}
+	else
+	{
+		newSender->SetAddress(address);
+		m_currentSession = NULL;
+	}
+
+	newSender->SetNoResponse(m_noResponse);
+
+    if (p_req->hipHdr.msgType == HARTIP_MSG_TYPE_REQUEST)
+    {
+	    errval = newSender->SendResponse(p_res);
+    }
+	
+	if(m_currentSession == NULL)
+	{
+		delete newSender;      
+        newSender = NULL;
+		return errval;
+	}
+
+	// Evaluate client version here (2 or greater to go secure)
+	if (errval == NO_ERROR && m_currentSession != NULL && m_version >= MinimalSecureClientVersion)
+	{
+        print_to_both(p_toolLogPtr, "Will be accepted DTLS connection\n");
+
+        SSL *ssl = SSL_new(m_ctx);
+        BIO* bio = BIO_new_dgram(m_socket, BIO_NOCLOSE);
+
+        SSL_set_bio(ssl, bio, bio);
+        SSL_set_options(ssl, SSL_OP_COOKIE_EXCHANGE);
+
+        struct sockaddr_in client_addr;
+        // block on client connection and cookie exchangep
+        // This will set the client_addr
+        while (DTLSv1_listen(ssl, (BIO_ADDR *)&client_addr) <= 0);
+
+        uint32_t client_sockfd = socket(client_addr.sin_family, SOCK_DGRAM, 0);
+        if (client_sockfd < 0)
+        {
+            print_to_both(p_toolLogPtr, "Error in socket(client)\n");
+            RemoveCurrentSession();
+            errval = SOCKET_CREATION_ERROR;
+            return errval;
+        }
+
+        int flags = fcntl(client_sockfd, F_GETFL, 0);
+
+        //  blocking socket
+        int fcntErr = fcntl(client_sockfd, F_SETFL, flags & ~O_NONBLOCK);
+        if (fcntErr < 0)
+        {
+            print_to_both(p_toolLogPtr, "Error failed to set blocking socket.\n");
+            RemoveCurrentSession();
+            errval = PARAM_ERROR;
+            return errval;
+        }
+
+        const int on = 1;
+        const int off = 0;
+
+        setsockopt(client_sockfd, SOL_SOCKET, SO_REUSEADDR, (const void*)&on, (socklen_t)sizeof(on));
+
+        int bindErr = bind(client_sockfd, (const struct sockaddr*)&m_server_addr, sizeof(struct sockaddr_in));
+        if (bindErr == LINUX_ERROR)
+        {
+            print_to_both(p_toolLogPtr, "Error bind(client)\n");
+            RemoveCurrentSession();
+            errval = SOCKET_BIND_ERROR;
+            return errval;
+        }
+
+        while (connect(client_sockfd, (struct sockaddr*)&client_addr, sizeof(struct sockaddr_in)))
+        {
+            print_to_both(p_toolLogPtr, "Error connect(client\n");
+            RemoveCurrentSession();
+            errval = LINUX_ERROR;
+            return errval;
+        }
+        m_socket = client_sockfd;
+        /* Set new fd and set BIO to connected - Blocking? */
+        BIO_set_fd(SSL_get_rbio(ssl), client_sockfd, BIO_NOCLOSE);
+        BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0, &client_addr);
+
+        print_to_both(p_toolLogPtr, "Will be accepted handshake of DTLS connection\n");
+        // make handshake
+        bool fatalError = false;
+        int ret;
+
+        while (!fatalError && ((ret = SSL_accept(ssl)) != 1))
+        {
+            int error_recv = SSL_get_error(ssl, ret);
+            switch (error_recv)
+            {
+                case SSL_ERROR_WANT_READ:
+                    continue;
+                case SSL_ERROR_WANT_WRITE:
+                    continue;
+
+                default:
+                {
+                    print_to_both(p_toolLogPtr, "SSL Accept failed. Code: %d\n", error_recv);
+                    fatalError = true;
+                    break;
+                }
+            }
+        }
+        if (fatalError)
+        {
+            close(client_sockfd);
+            SSL_shutdown(ssl);
+            SSL_free(ssl);
+            ssl = NULL;
+
+            print_to_both(p_toolLogPtr, "SSL Accept failed\n");
+            RemoveCurrentSession();
+            errval = VALIDATION_ERROR;
+            newSender = NULL;
+        }
+        else
+        {
+            print_to_both(p_toolLogPtr, "Negotiated Cipher Suite Used:%s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
+            
+            //AuditLogger->SetStatusSession(newSender, InsecureSession);
+            m_currentSession->SetSSL(ssl, client_sockfd);
+            newSender->SetSSL(ssl, client_sockfd);
+            m_clients.push_back(newSender);
+        }
+    }
+    
+    
+    // rm this else if code block once V1 / non-secure is no longer supported
+    else if (m_version < MinimalSecureClientVersion)
+    {
+    
+    	print_to_both(p_toolLogPtr, "Warning - UDP is using non-secure connection \n");
+    	
+
+    	if (newSender != NULL)
+    	{
+    		print_to_both(p_toolLogPtr, "UDP Client Address: %s \n", newSender->GetSessionInfoString());
+    		
+			m_clients.push_back(newSender);
+			Settings::Instance()->SetLockedHipVersion(m_version);
+			AuditLogger->SetStatusSession(newSender, InsecureSession);
+    	}
+    }
+	return errval;
+}
+std::vector<int32_t> UdpProcessor::GetSockets()
+{
+    std::vector<int32_t> vec;
+    for(std::vector<OneUdpProcessor*>::iterator it = m_clients.begin(); it!= m_clients.end(); ++it)
+    {
+        int32_t socket = (*it)->GetSocket();
+        
+    	dbgp_logdbg("GetSockets: %d \n", socket);
+        if(socket != 0)
+            vec.push_back(socket);
+    }
+
+	return vec;
+}
+
+void UdpProcessor::SetMainThread()
+{
+	m_is_main_thread = TRUE;
+	m_mainsocket = m_socket; 
+}
+    
+bool_t UdpProcessor::IsMainThread()
+{
+	return m_is_main_thread;
+}
+    
+int32_t UdpProcessor::GetMainSocket()
+{
+	return m_mainsocket;
+}
+void UdpProcessor::RemoveCurrentSession()
+{
+    if (m_currentSession == NULL)
+    {
+        return;
+    }
+    SecurityConfigurationTable::Instance()->DeleteConnection(m_currentSession->GetSSL());
+	m_connectionsManager->RemoveConnectionFromManager(m_currentSession);
+    DeleteSession(m_currentSession);
+    NetworkManager::Instance()->RemoveActiveConnection(m_port, UDP);
+	m_currentSession = NULL;
+}
+
+void UdpProcessor::ProcessInvalidSession()
+{
+	return;
+}
+
+void UdpProcessor::DestroyProcessor()
+{
+    print_to_both(p_toolLogPtr, "Destroying UDP Processor \n");
+
+	Stop();
+	//Join(); commenting out Join as this is making the hipserver freeze when issueing command 539 because of DTLS/UDP threading changes.
+}
+    
+uint32_t UdpProcessor::GetClientCount()
+{
+	return m_connectionsManager->GetCountClients(this);
+}
+
+void UdpProcessor::Start()
+{
+	HandlerMessages::Start();
+}
+
+bool_t UdpProcessor::IsRunning()
+{
+	dbgp_logdbg("UDP IsRunning(): %s \n", m_isRunning);
+	return HandlerMessages::IsRunning();
+}
+
+errVal_t OneUdpProcessor::SendBinaryResponse(void* pData, int size)
+{
+    return VALIDATION_ERROR;
+}
+
+errVal_t OneUdpProcessor::SendResponse(hartip_msg_t* p_response)
+{
 	errVal_t errval = NO_ERROR;
+	if (m_noResponse == TRUE)
+	{
+		dbgp_logdbg("Session init called \n");
+		return errval;
+	}
 
+	const char* funcName = "OneUdpProcessor";
+	sem_wait(&m_sem);
 	do
 	{
 		if (p_response == NULL)
 		{
 			errval = POINTER_ERROR;
-			print_to_both(p_toolLogPtr, "NULL pointer passed to %s\n",
-					funcName);
 			break;
 		}
 
@@ -353,7 +551,7 @@ errVal_t send_rsp_to_client(hartip_msg_t *p_response,
 
 		/* Fill in the version */
 		idx = HARTIP_OFFSET_VERSION;
-		rspBuff[idx] = HARTIP_PROTOCOL_VERSION;
+		rspBuff[idx] = m_version;
 
 		/* Fill in the message type */
 		idx = HARTIP_OFFSET_MSG_TYPE;
@@ -383,7 +581,7 @@ errVal_t send_rsp_to_client(hartip_msg_t *p_response,
 		uint16_t payloadLen = byteCount - HARTIP_HEADER_LEN;
 		if (payloadLen > 0)
 		{
-			memcpy_s(&rspBuff[HARTIP_HEADER_LEN], (TPPDU_MAX_FRAMELEN - TPPDU_MAX_HDRLEN), 
+			memcpy_s(&rspBuff[HARTIP_HEADER_LEN], HARTIP_MAX_PYLD_LEN, 
 					p_response->hipTPPDU, payloadLen);
 		}
 
@@ -408,831 +606,371 @@ errVal_t send_rsp_to_client(hartip_msg_t *p_response,
 		dbgp_logdbg("\n");
 		dbgp_logdbg("-------------------\n");
 
-		socklen_t socklen = sizeof(pSession->clientAddr);
+		socklen_t socklen = sizeof(m_clientAddr);
+		int sended;
+		if (m_ssl != NULL)
+        {
+            bool need_io = true;
+            while (need_io && ((sended = SSL_write(m_ssl, rspBuff, msgLen)) != msgLen))
+            {
+                // flag to exit SSL_write loop unless WANT_WRITE or WANT_READ
+                need_io = false;
+                int error_recv = SSL_get_error(m_ssl, sended);
+                switch (error_recv)
+                {
+                    case SSL_ERROR_ZERO_RETURN:
+                    case SSL_ERROR_SYSCALL:
+                        errval = SOCKET_SENDTO_ERROR;
+                        break;
 
-		if (LINUX_ERROR
-				== sendto(pSession->server_sockfd, rspBuff, msgLen, 0,
-						(struct sockaddr *) &pSession->clientAddr, socklen))
+                    case SSL_ERROR_WANT_WRITE:
+                    case SSL_ERROR_WANT_READ:
+                        need_io = true;
+                        break;
+                        // otherwise fatal and break out
+                    default:
+                    {
+                        errval = SOCKET_SENDTO_ERROR;
+                        print_to_both(p_toolLogPtr, "System Error %d for SSL_write()\n", errno);
+                        break;
+                    }
+                }
+            }
+        }
+		else
+        {
+            sended = sendto(m_server_sockfd, rspBuff, msgLen, 0, (struct sockaddr *) &m_clientAddr, socklen);
+        }
+
+		if (sended== LINUX_ERROR)
 		{
+			AuditLogger->SetStatusSession(this, WritesOccured);
 			errval = SOCKET_SENDTO_ERROR;
 			print_to_both(p_toolLogPtr, "System Error %d for socket sendto()\n",
 			errno);
 			break;
 		}
+		AuditLogger->SetStatusSession(this, WritesOccured, FALSE);
 		dbgp_logdbg("Msg sent from Server to Client\n");
 		dbgp_logdbg("\n<<<<<<<<<<<<<<<<<<<<<<<\n\n");
 	} while (FALSE);
-
+	sem_post(&m_sem);
 	return (errval);
 }
 
-/****************************************************
- *          Private functions for this file
- ****************************************************/
-/**
- * create_udpserver_socket(): Create HART-IP UDP Server Socket
- */
-static errVal_t create_udpserver_socket(uint16_t serverPortNum,
-		int32_t *pSocketFD)
+OneUdpProcessor::~OneUdpProcessor()
 {
-	errVal_t errval = NO_ERROR;
+    if(m_ssl != NULL)
+    {
 
-	const char *funcName = "create_udpserver_socket";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
+        int ret = 0;
+        close(m_clientSocket);
+        while ((ret = SSL_shutdown(m_ssl)) == 0);
+        print_to_both(p_toolLogPtr, "SSL_shutdown_finish: %d\n", ret);
+        SSL_free(m_ssl);
 
-	do
-	{
-		int32_t socketFD = socket(AF_INET, SOCK_DGRAM, 0);
-
-		if (socketFD == LINUX_ERROR)
-		{
-			errval = SOCKET_CREATION_ERROR;
-			print_to_both(p_toolLogPtr, "System Error %d for socket()\n",
-			errno);
-			break;
-		}
-
-		sockaddr_in_t server_addr;
-		memset_s(&server_addr, sizeof(server_addr), 0);
-
-		server_addr.sin_family = AF_INET;
-		server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-		server_addr.sin_port = htons(serverPortNum);
-
-		dbgp_logdbg("\nServer Socket:\n");
-		print_socket_addr(server_addr);
-
-		if (bind(socketFD, (struct sockaddr *) &server_addr,
-				sizeof(server_addr)) == LINUX_ERROR)
-		{
-			if (errno == EINVAL)
-			{
-				errval = SOCKET_PORT_USED_ERROR;
-				print_to_both(p_toolLogPtr,
-						"System Error %d for socket bind()\n", errno);
-				break;
-			}
-			else
-			{
-				errval = SOCKET_BIND_ERROR;
-				print_to_both(p_toolLogPtr,
-						"System Error %d for socket bind()\n", errno);
-				break;
-			}
-		} // if bind()
-		else
-		{
-			*pSocketFD = socketFD;
-		}
-	} while (FALSE);
-
-	return (errval);
+        m_ssl = NULL;
+    }
 }
 
-static bool_t is_session_avlbl(uint8_t *pSessNum)
+uint16_t OneUdpProcessor::GetSessionNumber()
 {
-	bool_t isSessAvlbl = FALSE;
-
-	for (uint8_t i = 0; i < HARTIP_NUM_SESS_SUPPORTED; i++)
-	{
-		if (ClientSessTable[i].id == HARTIP_SESSION_ID_INVALID)
-		{
-			*pSessNum = i;
-			isSessAvlbl = TRUE;
-			break;
-		}
-	}
-
-	return (isSessAvlbl);
+	return m_sessNum;
 }
 
-/**
- * handle_sess_close_req(): handle incoming session close request from
- * the client
- */
-static errVal_t handle_sess_close_req(hartip_msg_t *p_request,
-		hartip_msg_t *p_response, uint8_t sessNum)
+HARTIPConnection *OneUdpProcessor::GetSession()
 {
-	errVal_t errval = NO_ERROR;
-
-	const char *funcName = "handle_sess_close_req";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	do
-	{
-		if (p_request == NULL)
-		{
-			errval = POINTER_ERROR;
-			print_to_both(p_toolLogPtr, "NULL pointer (req) passed to %s\n",
-					funcName);
-			break;
-		}
-		if (p_response == NULL)
-		{
-			errval = POINTER_ERROR;
-			print_to_both(p_toolLogPtr, "NULL pointer (rsp) passed to %s\n",
-					funcName);
-			break;
-		}
-
-		/* Start with a clean slate */
-		memset_s(p_response, sizeof(*p_response), 0);
-
-		hartip_hdr_t *p_reqHdr = &p_request->hipHdr;
-		hartip_hdr_t *p_rspHdr = &p_response->hipHdr;
-
-		/* Build response for HART-IP Client */
-		p_rspHdr->version = HARTIP_PROTOCOL_VERSION;
-		p_rspHdr->msgType = HARTIP_MSG_TYPE_RESPONSE;
-		p_rspHdr->msgID = p_reqHdr->msgID;
-		p_rspHdr->status = NO_ERROR;
-		p_rspHdr->seqNum = p_reqHdr->seqNum;
-		p_rspHdr->byteCount = HARTIP_HEADER_LEN;
-
-		send_rsp_to_client(p_response, &ClientSessTable[sessNum]);
-		clear_session_info(sessNum);
-	} while (FALSE);
-
-	return (errval);
+	return this;
 }
 
-static errVal_t handle_sess_init_req(hartip_msg_t *p_request,
-		hartip_msg_t *p_response, sockaddr_in_t client_addr)
+void OneUdpProcessor::SetNoResponse(const bool_t& noResponse)
 {
-	errVal_t errval = NO_ERROR;
-
-	const char *funcName = "handle_sess_init_req";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-	sem_wait(p_semServerTables);	// lock server tables when available
-	{
-		do
-		{
-			if (p_request == NULL)
-			{
-				errval = POINTER_ERROR;
-				print_to_both(p_toolLogPtr, "NULL pointer (req) passed to %s\n",
-						funcName);
-				break;
-			}
-			if (p_response == NULL)
-			{
-				errval = POINTER_ERROR;
-				print_to_both(p_toolLogPtr, "NULL pointer (rsp) passed to %s\n",
-						funcName);
-				break;
-			}
-
-			/* Start with a clean slate */
-			memset_s(p_response, sizeof(*p_response), 0);
-
-			hartip_hdr_t *p_reqHdr = &p_request->hipHdr;
-			hartip_hdr_t *p_rspHdr = &p_response->hipHdr;
-
-			/* Build header of response */
-			p_rspHdr->version = HARTIP_PROTOCOL_VERSION;
-			p_rspHdr->msgType = HARTIP_MSG_TYPE_RESPONSE;
-			p_rspHdr->msgID = p_reqHdr->msgID;
-			p_rspHdr->status = NO_ERROR;
-			p_rspHdr->seqNum = p_reqHdr->seqNum;
-			p_rspHdr->byteCount = HARTIP_HEADER_LEN;
-
-			/* Build payload of response */
-			uint16_t byteCount = p_reqHdr->byteCount;
-			uint16_t payloadLen = byteCount - HARTIP_HEADER_LEN;
-
-			/* Fill in the payload, if long enough */
-			if (payloadLen >= HARTIP_SESS_INIT_PYLD_LEN)
-			{
-				memcpy_s(p_response->hipTPPDU, HARTIP_MAX_PYLD_LEN, 
-					p_request->hipTPPDU, HARTIP_SESS_INIT_PYLD_LEN);
-				p_rspHdr->byteCount += HARTIP_SESS_INIT_PYLD_LEN;
-
-				/* First byte of payload should be set to Primary Master */
-				p_response->hipTPPDU[0] = HARTIP_PRIM_MASTER_TYPE;
-			}
-
-			uint8_t thisSess = 0;
-			bool_t isReqErr = FALSE;
-
-			if (p_reqHdr->version != HARTIP_PROTOCOL_VERSION)
-			{
-				isReqErr = TRUE;
-				p_rspHdr->status = HARTIP_SESS_ERR_VERSION_NOT_SUPPORTED;
-				print_to_both(p_toolLogPtr,
-						"\nHART-IP Initiate Session Refused...  HARTIP Version (%d) not supported\n",
-						p_reqHdr->version);
-			}
-			else if (p_reqHdr->byteCount
-					< (HARTIP_HEADER_LEN + HARTIP_SESS_INIT_PYLD_LEN))
-			{
-				isReqErr = TRUE;
-				p_rspHdr->status = HARTIP_SESS_ERR_TOO_FEW_BYTES;
-				print_to_both(p_toolLogPtr,
-						"\nHART-IP Initiate Session Refused...  Insufficient bytes in pkt\n"
-						);
-			}
-			else if (p_request->hipTPPDU[0] != HARTIP_PRIM_MASTER_TYPE)
-			{
-				isReqErr = TRUE;
-				p_rspHdr->status = HARTIP_SESS_ERR_INVALID_MASTER_TYPE;
-				print_to_both(p_toolLogPtr,
-						"\nHART-IP Initiate Session Refused...  Invalid Master Type (%d)\n",
-						p_request->hipTPPDU[0]);
-			}
-			else if (!is_session_avlbl(&thisSess))
-			{
-				isReqErr = TRUE;
-				p_rspHdr->status = HARTIP_SESS_ERR_SESSION_NOT_AVLBL;
-				print_to_both(p_toolLogPtr,
-						"\nHART-IP Initiate Session Refused...  No client sessions are available.  A maximum of %d are supported.\n",
-						HARTIP_NUM_SESS_SUPPORTED);
-			} // if (!is_session_avlbl(&thisSess))
-
-
-
-			if (isReqErr)
-			{
-				// error session
-				// in this case, there is no entry in the ClientSession table
-				ErrorSession.server_sockfd = ClientSessTable[0].server_sockfd;
-				ErrorSession.clientAddr = client_addr;
-				ErrorSession.id = HARTIP_SESSION_ID_INVALID;
-				pCurrentSession = &ErrorSession;
-
-				errval = MSG_ERROR;
-			}
-			else
-			{
-				/* New session */
-
-				pCurrentSession = &ClientSessTable[thisSess];
-				dbgp_hs("Current Session #%d\n", thisSess);
-
-
-				memcpy_s(&pCurrentSession->clientAddr, sizeof(hartip_session_t::clientAddr), 
-						&client_addr, sizeof(client_addr));
-				pCurrentSession->id = HARTIP_SESSION_ID_OK;
-				int32_t sessSig = SIG_INACTIVITY_TIMER(thisSess);
-
-				dbgp_hs("Inactivity Signal for this session: %d\n", sessSig);
-
-				/* Create the inactivity timer */
-				struct sigevent se;
-				se.sigev_notify = SIGEV_SIGNAL;
-				se.sigev_signo = sessSig;
-				se.sigev_value.sival_ptr = &(pCurrentSession->idInactTimer);
-
-				timer_create(CLOCK_REALTIME, &se,
-						&pCurrentSession->idInactTimer);
-				uint32_t msTimer = (p_request->hipTPPDU[1] << 24)
-						| (p_request->hipTPPDU[2] << 16)
-						| (p_request->hipTPPDU[3] << 8)
-						| (p_request->hipTPPDU[4]);
-
-				dbgp_hs("Inactivity timer interval = %d ms\n", msTimer);
-				pCurrentSession->msInactTimer = msTimer;
-				pCurrentSession->sessNum = thisSess;
-			}
-
-
-		} while (FALSE);
-	}
-	sem_post(p_semServerTables);	// unlock server tables when done
-
-	return (errval);
+	m_noResponse = noResponse;
 }
 
-
-/**
- * handle_keepalive_req(): handle incoming keep alive request from
- * the client
- *
- * There is nothing to do but reply success.  The receipt of the message
- * resets the inactivity timer on the server.
- */
-static errVal_t handle_keepalive_req(hartip_msg_t *p_request,
-		hartip_msg_t *p_response, uint8_t sessNum)
+void OneUdpProcessor::SetSSL(SSL* ssl, uint32_t socket)
 {
-	errVal_t errval = NO_ERROR;
-
-	const char *funcName = "handle_keepalive_req";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	do
-	{
-		if (p_request == NULL)
-		{
-			errval = POINTER_ERROR;
-			print_to_both(p_toolLogPtr, "NULL pointer (req) passed to %s\n",
-					funcName);
-			break;
-		}
-		if (p_response == NULL)
-		{
-			errval = POINTER_ERROR;
-			print_to_both(p_toolLogPtr, "NULL pointer (rsp) passed to %s\n",
-					funcName);
-			break;
-		}
-
-		/* Start with a clean slate */
-		memset_s(p_response, sizeof(*p_response), 0);
-
-		hartip_hdr_t *p_reqHdr = &p_request->hipHdr;
-		hartip_hdr_t *p_rspHdr = &p_response->hipHdr;
-
-		/* Build response for HART-IP Client */
-		p_rspHdr->version = HARTIP_PROTOCOL_VERSION;
-		p_rspHdr->msgType = HARTIP_MSG_TYPE_RESPONSE;
-		p_rspHdr->msgID = p_reqHdr->msgID;	// HARTIP_MSG_ID_KEEPALIVE
-		p_rspHdr->status = NO_ERROR;
-		p_rspHdr->seqNum = p_reqHdr->seqNum;
-		p_rspHdr->byteCount = HARTIP_HEADER_LEN;
-
-		send_rsp_to_client(p_response, &ClientSessTable[sessNum]);
-//		clear_session_info(sessNum);
-	} while (FALSE);
-
-	return (errval);
+    m_ssl = ssl;
+    m_clientSocket = socket;
 }
 
-static errVal_t handle_cmd_msg(hsmessage_t &hsmsg)
+SSL* OneUdpProcessor::GetSSL()
 {
-	const char *funcName = "handle_cmd_msg";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	dbgp_hs("\nServer processing msg recd from cmdQueue...\n");
-	TpPdu tppdu(hsmsg.message.hipTPPDU);
-	errVal_t errval = NO_ERROR;
-	do
-	{
-		hsmsg.message.hipHdr.version = HARTIP_PROTOCOL_VERSION;
-		hsmsg.message.hipHdr.status = 0;
-		hsmsg.message.hipHdr.msgType = HARTIP_MSG_TYPE_RESPONSE;
-		hsmsg.message.hipHdr.msgID = HARTIP_MSG_ID_TP_PDU;
-		hsmsg.message.hipHdr.byteCount = HARTIP_HEADER_LEN + tppdu.PduLength();
-
-		errval = send_rsp_to_client(&hsmsg.message, hsmsg.pSession);
-	} while (FALSE);
-	return (errval);
+    return m_ssl;
 }
 
-static errVal_t handle_token_passing_req(hartip_msg_t *p_request, uint8_t sessNum)
+int32_t OneUdpProcessor::GetSocket()
 {
-	const char *funcName = "handle_token_passing_req";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	errVal_t errval = NO_ERROR;
-
-	sem_wait(p_semServerTables);	// lock server tables when available
-	{
-		do
-		{
-			if (p_request == NULL)
-			{
-				errval = POINTER_ERROR;
-				print_to_both(p_toolLogPtr, "NULL pointer (req) passed to %s\n",
-						funcName);
-				break;
-			}
-
-			// create hsmessage
-			hsmessage_t hsMsg;
-			hsMsg.pSession = pCurrentSession;
-			hsMsg.message = *p_request;
-			TpPdu tppdu(hsMsg.message.hipTPPDU);
-			hsMsg.cmd = tppdu.CmdNum();
-			time(&hsMsg.time);  // timestamp
-
-
-			bool_t isSrvrCommand = (
-					hsMsg.cmd == 257 ||
-					hsMsg.cmd == 258 ||
-					/*
-					 *  if APP is an IO system:
-					 *  	pass subscription commands on
-					 *  else
-					 *  	hipserver handles the subscriptions
-					 */
-					(hsMsg.cmd == 532 && connectionType != hipiosys) ||
-					(hsMsg.cmd == 533 && connectionType != hipiosys)
-					) ? TRUE : FALSE;
-
-			/* Start with a clean slate */
-			AppMsg txMsg;
-			memset_s(&txMsg, APP_MSG_SIZE, 0);
-			memcpy_s(txMsg.pdu, TPPDU_MAX_FRAMELEN, p_request->hipTPPDU, sizeof(p_request->hipTPPDU));
-			txMsg.transaction = (sessNum << 16);
-			txMsg.transaction += hsMsg.message.hipHdr.seqNum; // client # + HART-IP sequence number
-
-			if (isSrvrCommand)
-			{ // these msgs processed by server
-
-				dbgp_intfc("Server received msg from cmdQueue\n");
-
-				TpPdu pdu(hsMsg.message.hipTPPDU);
-				
-				if (pdu.CmdNum() == 257)
-				{ // #6005
-					process_cmd257(&hsMsg);
-					handle_cmd_msg(hsMsg);
-				}
-
-				else if (pdu.CmdNum() == 258)
-				{
-					process_cmd258(&hsMsg);
-					handle_cmd_msg(hsMsg);
-					shutdown_server();
-				}
-
-				else if (pdu.CmdNum() == 532)
-				{
-					process_cmd532(&hsMsg);
-					handle_cmd_msg(hsMsg);
-				}
-				else if (pdu.CmdNum() == 533)
-				{
-					process_cmd533(&hsMsg);
-					handle_cmd_msg(hsMsg);
-				}
-				else
-				{
-					print_to_both(p_toolLogPtr,
-							"Server received unknown command msg from cmdQueue\n");
-				}
-			}
-			else
-			{
-				// add message to request table, used to match responses from a device
-				add_request_to_table(txMsg.transaction, &hsMsg);
-				snd_msg_to_app(&txMsg);
-			}
-
-		} while (FALSE);
-	}
-	sem_post(p_semServerTables);	// unlock server tables when done
-
-	return (errval);
+    return m_clientSocket;
 }
-
-/**
- * is_client_sess_valid(): check if the request comes from the correct client
- *
- * RETURN: TRUE if ok to proceed, FALSE otherwise
- */
-static bool_t is_client_sess_valid(sockaddr_in_t *pClientAddr,
-		uint8_t *pSessNum)
+errVal_t OneUdpProcessor::ReadSocket(uint8_t *p_buffer, ssize_t *p_size)
 {
-	bool_t retval = FALSE;
-	uint8_t i;
+    errVal_t errval = NO_ERROR;
+    sockaddr_in_t socketAddr;
+	socklen_t socklen = sizeof(socketAddr);
+	memset_s(&socketAddr, socklen, 0);
+	sem_wait(&m_sem);
 
-	for (i = 0; i < HARTIP_NUM_SESS_SUPPORTED; i++)
-	{
-		dbgp_hs("Checking Client %d Info...\n", i);
+	if (m_ssl != NULL)
+    {
+        int hasP = SSL_has_pending(m_ssl);
+        int p = SSL_pending(m_ssl);
+        if(p) 
+        {
+            errval=LINUX_ERROR;
+            *p_size = 0;
+            return errval;
+        }
+        while ( (*p_size = SSL_read(m_ssl, p_buffer, HARTIP_MAX_PYLD_LEN)) < 0)
+        {
+            int error_recv = SSL_get_error(m_ssl, *p_size);
+            switch (error_recv)
+            {
+                case SSL_ERROR_WANT_READ:
+                case SSL_ERROR_WANT_WRITE:
+                {
+                    int hasP = SSL_has_pending(m_ssl);
+                    int p = SSL_pending(m_ssl);
+                    continue;
+                }
 
-		socklen_t socklen = sizeof(*pClientAddr);
-		hartip_session_t thisSess = ClientSessTable[i];
+                default:
+                {
+                    fprintf(stderr, "ERROR: failed to read\n");
+                    errval = SOCKET_RECVFROM_ERROR; // is there a better error here?
+                    break;
+                }
+            }
+            if (errval != NO_ERROR)
+            {
+                // exit while loop
+                break;
+            }
+        } // SSL_read
 
-		if (thisSess.id == HARTIP_SESSION_ID_INVALID)
-		{
-			// Session not initiatiated
-			continue;
-		}
-
-		if (thisSess.server_sockfd == HARTIP_SOCKET_FD_INVALID)
-		{
-			// Socket for session not initiatiated
-			print_to_both(p_toolLogPtr, "Invalid socket ID for session %d\n",
-					i);
-			continue;
-		}
-
-		if (!memcmp(&thisSess.clientAddr, pClientAddr, socklen))
-		{
-			/* Session exists */
-			dbgp_hs("Session %d was initiated for this client\n", i);
-			*pSessNum = i;
-			retval = TRUE;
-			break;
-		}
-		else
-		{
-			dbgp_hs("Session %d doesn't match client's session\n", i);
-		}
-	} // for (i = 0; i < HARTIP_NUM_SESS_SUPPORTED; i++)
-
-	if (!retval)
-	{
-		print_to_both(p_toolLogPtr, "Client address does not exist!\n");
-		print_to_both(p_toolLogPtr, "\nClient Session:\n");
-		print_socket_addr(*pClientAddr);
-
-		for (uint8_t j = 0; j < HARTIP_NUM_SESS_SUPPORTED; j++)
-		{
-			dbgp_init("\nCurrent Session (%d):\n", j);
-			print_socket_addr(ClientSessTable[j].clientAddr);
-		}
-	}
-
-	return (retval);
-}
-
-/**
- * parse_client_req()
- *     Parse the HART-IP PDU in p_reqBuff and store the parsed request
- *     "p_parsedReq".  p_parsedReq must be pre-allocated.
- */
-static errVal_t parse_client_req(uint8_t *p_reqBuff, ssize_t lenPdu,
-		hartip_msg_t *p_parsedReq)
-{
-	const char *funcName = "parse_client_req";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	errVal_t errval = NO_ERROR;
-
-	do
-	{
-		if (p_reqBuff == NULL)
-		{
-			errval = POINTER_ERROR;
-			print_to_both(p_toolLogPtr, "NULL pointer (req) passed to %s\n",
-					funcName);
-			break;
-		}
-
-		if (p_parsedReq == NULL)
-		{
-			errval = POINTER_ERROR;
-			print_to_both(p_toolLogPtr,
-					"NULL pointer (parsed req) passed to %s\n", funcName);
-			break;
-		}
-
-		if (lenPdu < HARTIP_HEADER_LEN)
-		{
-			print_to_both(p_toolLogPtr, "Incomplete PDU Error!\n");
-			errval = PDU_ERROR;
-			break;
-		}
-
-		/* Start with a clean slate */
-		memset_s(p_parsedReq, sizeof(*p_parsedReq), 0);
-
-		hartip_hdr_t *p_clientMsgHdr = &p_parsedReq->hipHdr;
-
-		/* Build Request */
-		uint32_t idx;
-
-		/* Version */
-		idx = HARTIP_OFFSET_VERSION;
-		if (p_reqBuff[idx] != HARTIP_PROTOCOL_VERSION)
-		{
-			print_to_both(p_toolLogPtr, "HARTIP Version Parse Error!\n");
-			errval = VERSION_ERROR;
-			break;
-		}
-		p_clientMsgHdr->version = p_reqBuff[idx];
-
-		/* Message Type */
-		idx = HARTIP_OFFSET_MSG_TYPE;
-		uint8_t msgType = p_reqBuff[idx] & HARTIP_MSG_TYPE_MASK;
-
-		if ((msgType != HARTIP_MSG_TYPE_REQUEST)
-				&& (msgType != HARTIP_MSG_TYPE_RESPONSE)
-				&& (msgType != HARTIP_MSG_TYPE_PUBLISH)
-				&& (msgType != HARTIP_MSG_TYPE_NAK))
-		{
-			print_to_both(p_toolLogPtr, "HARTIP Msg Type Parse Error!\n");
-			errval = MSG_TYPE_ERROR;
-			break;
-		}
-		p_clientMsgHdr->msgType = (HARTIP_MSG_TYPE) msgType;
-
-		/* Message ID */
-		idx = HARTIP_OFFSET_MSG_ID;
-		uint8_t msgID = p_reqBuff[idx];
-
-		if ((msgID != HARTIP_MSG_ID_SESS_INIT)
-				&& (msgID != HARTIP_MSG_ID_SESS_CLOSE)
-				&& (msgID != HARTIP_MSG_ID_KEEPALIVE)
-				&& (msgID != HARTIP_MSG_ID_TP_PDU)
-				&& (msgID != HARTIP_MSG_ID_DISCOVERY))
-		{
-			print_to_both(p_toolLogPtr, "HARTIP Msg ID Parse Error!\n");
-			errval = MSG_ID_ERROR;
-			break;
-		}
-		p_clientMsgHdr->msgID = (HARTIP_MSG_ID) msgID;
-
-		/* Status Code */
-		idx = HARTIP_OFFSET_STATUS;
-		p_clientMsgHdr->status = p_reqBuff[idx];
-
-		/* Sequence Number */
-		idx = HARTIP_OFFSET_SEQ_NUM;
-		p_clientMsgHdr->seqNum = p_reqBuff[idx] << 8 | p_reqBuff[idx + 1];
-
-		/* Byte Count */
-		idx = HARTIP_OFFSET_BYTE_COUNT;
-		p_clientMsgHdr->byteCount = p_reqBuff[idx] << 8 | p_reqBuff[idx + 1];
-
-		/* Fill in the payload, if not empty */
-		uint16_t payloadLen = (p_clientMsgHdr->byteCount) -
-		HARTIP_HEADER_LEN;
-
-		// #689		
-		if (payloadLen > TPPDU_MAX_FRAMELEN - HARTIP_HEADER_LEN)
-		{
-			print_to_both(p_toolLogPtr, "HARTIP buffer overflow!\n");
-			errval = OVERFLOW_ERROR;
-			break;
-		}
-
-		if (payloadLen > 0)
-		{
-			memcpy_s(p_parsedReq->hipTPPDU, TPPDU_MAX_FRAMELEN, &p_reqBuff[HARTIP_HEADER_LEN],
-					payloadLen);
-		}
-	} while (FALSE);
-
-	return (errval);
-}
-
-static void print_socket_addr(sockaddr_in_t socket_addr)
-{
-	dbgp_logdbg("Socket Address:\n");
-	dbgp_logdbg(" Family: 0x%.4X, Port: 0x%.4X, Addr: 0x%.8X\n",
-			socket_addr.sin_family, socket_addr.sin_port,
-			socket_addr.sin_addr.s_addr);
-}
-
-/**
- * wait_for_client_req(): wait for client requests on the server sockets.
- *
- * NOTE: this caller will be blocked if there is no client request.
- */
-static errVal_t wait_for_client_req(uint8_t *p_reqBuff, ssize_t *p_lenPdu,
-		sockaddr_in_t *p_client_sockaddr)
-{
-	fd_set read_fdset;
-	errVal_t errval = NO_ERROR;
-	struct timeval timeout =
-	{ 0, 2 };
-
-	const char *funcName = "wait_for_client_req";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	do
-	{
-		FD_ZERO(&read_fdset);
-		FD_SET(pCurrentSession->server_sockfd, &read_fdset);
-
-		while (TRUE) /* run forever */
-		{
-			int retval;
-			timeout.tv_sec = 60;
-			timeout.tv_usec = 0;	// 2 microseconds
-			retval = select(pCurrentSession->server_sockfd + 1, &read_fdset,
-			NULL, NULL, NULL/*&timeout*/);
-			if (retval == LINUX_ERROR)
-			{
-				if (errno == EINTR)
-				{
-					continue;
-				}
-				else
-				{
-					errval = SOCKET_SELECT_ERROR;
-					print_to_both(p_toolLogPtr,
-							"System Error %d for socket select()\n",
-							errno);
-					break;
-				}
-			}
-			else if (retval == 0)
-			{
-				continue; // timeout
-			}
-			else
-			{
-				int x = 1;
-				// data is available
-			}  // select()
-
-			socklen_t socklen = sizeof(*p_client_sockaddr);
-			memset_s(p_client_sockaddr, socklen, 0);
-
-			*p_lenPdu = recvfrom(pCurrentSession->server_sockfd, p_reqBuff,
-			HARTIP_MAX_PYLD_LEN, 0, (struct sockaddr *) p_client_sockaddr,
-					&socklen);
-
-			if (*p_lenPdu == LINUX_ERROR)
-			{
-				errval = SOCKET_RECVFROM_ERROR;
-				print_to_both(p_toolLogPtr,
-						"System Error %d for socket recvfrom()\n",
-						errno);
-				break;
-			}
-
-			dbgp_hs("\n>>>>>>>>>>>>>>>>>>>>>>>\n");dbgp_hs("Server got a Client request:\n");
-			dbgp_logdbg("\n-------------------\n");
-			dbgp_logdbg("Msg recd by Server from Client:\n");
-
-			uint16_t i;
-			for (i = 0; i < *p_lenPdu; i++)
-			{
-				dbgp_logdbg(" %.2X", p_reqBuff[i]);
-			}
-			dbgp_logdbg("\n");
-			dbgp_logdbg("-------------------\n");
-
-			break; // how can this run forever with a break? VG
-		} // while (TRUE) /* run forever */
-	} while (FALSE);
-
-	return (errval);
-}
-
-static void reset_client_info(void)
-{
-	const char *funcName = "reset_client_info";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	for (uint8_t i = 0; i < HARTIP_NUM_SESS_SUPPORTED; i++)
-	{
-		clear_session_info(i);
-		ClientSessTable[i].server_sockfd = HARTIP_SOCKET_FD_INVALID;
-	}
-}
-
-
-
-static void set_inactivity_timer()
-{
-	const char *funcName = "set_inactivity_timer";
-	dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
-
-	struct itimerspec its;
-
-	its.it_interval.tv_sec = 0;
-	its.it_interval.tv_nsec = 0;
-	its.it_value.tv_nsec = 0;
-
-	if (pCurrentSession->id == HARTIP_SESSION_ID_OK)
-	{
-		// start timer
-		its.it_value.tv_sec = (pCurrentSession->msInactTimer) / 1000;
-	}
+        printf("SSL_read from by udp(%d)", *p_size);
+    }
 	else
-	{
-		// disarm this timer
-		its.it_value.tv_sec = 0;
-	}
+    {
+        *p_size = recvfrom(m_server_sockfd, p_buffer,HARTIP_MAX_PYLD_LEN, 0, (struct sockaddr *) &socketAddr, &socklen);
+        printf("recv from by oneudpprocie(%d)", *p_size);
+    }
 
-	if (pCurrentSession && pCurrentSession != &ErrorSession)
+	if (*p_size == LINUX_ERROR)
 	{
-		timer_settime(pCurrentSession->idInactTimer, 0, &its, NULL);
-		dbgp_noop("Server Inactivity Timer Set\n");
+		errval = SOCKET_RECVFROM_ERROR;
+		print_to_both(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
 	}
+	sem_post(&m_sem);
+
+	return errval;
 }
 
-
-// #6004
-int process_cmd258(hsmessage_t *hsmsg)
+int OneUdpProcessor::GetSlotNumber()
 {
-	TpPdu findme(hsmsg->message.hipTPPDU);
-
-	const uint8_t bc = 4;  // byte count for success response
-
-	if (findme.Validate(0))
-	{
-		dbgp_log("Received to shutdown server.\n");
-		findme.ProcessOkResponse(RC_SUCCESS, bc);
-	}
-
-	return STS_OK;          // request is copied into table
+	return SecurityConfigurationTable::Instance()->GetSlotNumber(GetSSL());
 }
 
-// #6005
-int process_cmd257(hsmessage_t *hsmsg)
+bool_t OneUdpProcessor::IsReadOnly()
 {
-	TpPdu findme(hsmsg->message.hipTPPDU);
+    return SecurityConfigurationTable::Instance()->IsConnectionReadOnly(GetSSL());
+}
 
-	const uint8_t bc = 5;  // byte count for success response with added data bytes.
+SSL_CTX* UdpProcessor::m_ctx = NULL;
+extern uint8_t clientEncryptionType;
+extern unsigned int psk_out_of_bound_serv_cb(SSL *ssl, const char *id, unsigned char *psk, unsigned int max_psk_len);
+extern int srp_server_param_cb(SSL *s, int *ad, void *arg);
+extern int verify_callback(int ok, X509_STORE_CTX *ctx);
+int verify_cookie(SSL* ssl, const unsigned char* cookie, unsigned int cookie_len);
+int generate_cookie(SSL* ssl, unsigned char* cookie, unsigned int* cookie_len);
 
-	if (findme.Validate(0))
+void UdpProcessor::Init()
+{
+    m_ctx = SSL_CTX_new(DTLS_server_method());
+
+    // Limit min supported protocol ver (per HART-IP Spec. 10.2.1)
+    int ret = SSL_CTX_set_min_proto_version(m_ctx, DTLS1_2_VERSION);
+    if (ret != 1)
+    {
+        print_to_both(p_toolLogPtr, "Set min proto version DTSL1_2_VERSION failed.\n");
+    }
+    SSL_CTX_set_session_cache_mode(m_ctx, SSL_SESS_CACHE_OFF);
+	
+    if(SSL_CTX_set_cipher_list(m_ctx, CIPHER_SUITES) != 1)
 	{
-		uint8_t dataSize = 1;
-		uint8_t data[dataSize];
-		data[0] = connectionType;
-		findme.ProcessOkResponse(RC_SUCCESS, bc);
-		// look inside *hsmsg
-		findme.AddData(data,dataSize);
-		// Modify the data based on the byte count.
-		//findme.ProcessOkResponseAddData(RC_SUCCESS, bc, connectionType);
-
+		dbgp_log("%s\n", ERR_error_string(ERR_get_error(), NULL));
 	}
+	
+	SSL_CTX_set_psk_server_callback(m_ctx, psk_out_of_bound_serv_cb);
+	
+	SSL_CTX_set_srp_username_callback(m_ctx, srp_server_param_cb);
+	
+    SSL_CTX_set_mode(m_ctx, SSL_MODE_AUTO_RETRY);
+    SSL_CTX_set_cookie_generate_cb(m_ctx, generate_cookie);
+    SSL_CTX_set_cookie_verify_cb(m_ctx, verify_cookie);
+}
 
-	return STS_OK;          // request is copied into table
+// literally the same as Init()
+void UdpProcessor::InitThreadedObject()
+{
+m_ctx = SSL_CTX_new(DTLS_server_method());
+
+    // Limit min supported protocol ver (per HART-IP Spec. 10.2.1)
+    int ret = SSL_CTX_set_min_proto_version(m_ctx, DTLS1_2_VERSION);
+    if (ret != 1)
+    {
+        print_to_both(p_toolLogPtr, "Set min proto version DTSL1_2_VERSION failed.\n");
+    }
+    SSL_CTX_set_session_cache_mode(m_ctx, SSL_SESS_CACHE_OFF);
+	
+    if(SSL_CTX_set_cipher_list(m_ctx, CIPHER_SUITES) != 1)
+	{
+		dbgp_log("%s\n", ERR_error_string(ERR_get_error(), NULL));
+	}
+	
+	SSL_CTX_set_psk_server_callback(m_ctx, psk_out_of_bound_serv_cb);
+	
+	SSL_CTX_set_srp_username_callback(m_ctx, srp_server_param_cb);
+	
+    SSL_CTX_set_mode(m_ctx, SSL_MODE_AUTO_RETRY);
+    SSL_CTX_set_cookie_generate_cb(m_ctx, generate_cookie);
+    SSL_CTX_set_cookie_verify_cb(m_ctx, verify_cookie);
+}
+
+void UdpProcessor::Cleanup()
+{
+    SSL_CTX_free(m_ctx);
+}
+
+void UdpProcessor::CreateUdpServerSocket(int32_t serverSocket, sockaddr_in_t *serverAddress)
+{
+	m_isRunning = TRUE;
+	m_socket = serverSocket;
+	memcpy_s(&m_server_addr, sizeof(m_server_addr), serverAddress, sizeof(sockaddr_in_t));
+}
+
+unsigned char cookie_secret[COOKIE_SECRET_LENGTH];
+int cookie_initialized = 0;
+
+int generate_cookie(SSL* ssl, unsigned char* cookie, unsigned int* cookie_len)
+{
+    unsigned char *buffer;
+    unsigned char result[EVP_MAX_MD_SIZE];
+    unsigned int length = 0;
+    unsigned int resultlength;
+    struct sockaddr_in server_addr;
+
+    int retVal = 1;
+
+    /* Initialize a random secret */
+    if (!cookie_initialized)
+    {
+        if (!RAND_bytes(cookie_secret, COOKIE_SECRET_LENGTH))
+        {
+            print_to_both(p_toolLogPtr, "Random secret creation failed.\n");
+            retVal = 0;
+        }
+        else
+        {
+            cookie_initialized = 1;
+            retVal = 1;
+        }
+    }
+
+    if (retVal == 1)
+    {
+        /* Read peer information */
+        (void)BIO_dgram_get_peer(SSL_get_rbio(ssl), &server_addr);
+
+        /* Create buffer with peer's address and port */
+        length = 0;
+        length += sizeof(struct in_addr);
+        length += sizeof(in_port_t);
+        buffer = (unsigned char*)OPENSSL_malloc(length);
+
+        if (buffer == NULL)
+        {
+            print_to_both(p_toolLogPtr, "random buffer creation failed. OPENSSL allocation error\n");
+            retVal = 0;
+        }
+        else
+        {
+            memcpy_s(buffer, length, &server_addr.sin_port, sizeof(in_port_t));
+            memcpy_s(buffer + sizeof(server_addr.sin_port), length, &server_addr.sin_addr, sizeof(struct in_addr));
+
+            /* Calculate HMAC of buffer using the secret */
+            HMAC(EVP_sha1(), (const void*)cookie_secret, COOKIE_SECRET_LENGTH,
+                 (const unsigned char*)buffer, length, result, &resultlength);
+            OPENSSL_free(buffer);
+
+            memcpy_s(cookie, *cookie_len, result, resultlength);
+            *cookie_len = resultlength;
+            retVal = 1;
+        }
+    }
+
+    return (retVal);
+}
+
+/**
+ * verify_cookie()
+ */
+int verify_cookie(SSL* ssl, const unsigned char* cookie, unsigned int cookie_len)
+{
+    unsigned char* buffer, result[EVP_MAX_MD_SIZE];
+    unsigned int length = 0, resultlength;
+    struct sockaddr_in server_addr;
+    int retVal = 0;
+
+    /* If secret isn't initialized yet, the cookie can't be valid */
+    if (!cookie_initialized)
+    {
+        print_to_both(p_toolLogPtr, "Cookie not initialized.\n");
+        retVal = 0;
+    }
+    else
+    {
+        retVal = 1;
+        /* Read peer information */
+        (void)BIO_dgram_get_peer(SSL_get_rbio(ssl), &server_addr);
+
+        /* Create buffer with peer's address and port */
+        length = 0;
+        length += sizeof(struct in_addr);
+        length += sizeof(in_port_t);
+        buffer = (unsigned char*)OPENSSL_malloc(length);
+
+        if (buffer == NULL)
+        {
+            print_to_both(p_toolLogPtr, "random buffer creation failed. OPENSSL allocation error\n");
+            retVal = 0;
+        }
+        else
+        {
+            retVal = 1;
+            memcpy_s(buffer, length, &server_addr.sin_port, sizeof(in_port_t));
+            memcpy_s(buffer + sizeof(in_port_t),length, &server_addr.sin_addr, sizeof(struct in_addr));
+
+            /* Calculate HMAC of buffer using the secret */
+            HMAC(EVP_sha1(), (const void*)cookie_secret, COOKIE_SECRET_LENGTH,
+                 (const unsigned char*)buffer, length, result, &resultlength);
+            OPENSSL_free(buffer);
+            
+            int diff;
+            memcmp_s(result, EVP_MAX_MD_SIZE, cookie, resultlength, &diff);
+            int cookieCheck = (cookie_len == resultlength) && diff != 0;
+            if (!cookieCheck)
+            {
+                retVal = 1;
+                print_to_both(p_toolLogPtr, "Cookie check OK.\n");
+            }
+            else
+            {
+                retVal = 0;
+                print_to_both(p_toolLogPtr, "Cookie check fail.\n");
+            }
+        }
+    }
+
+    return retVal;
 }

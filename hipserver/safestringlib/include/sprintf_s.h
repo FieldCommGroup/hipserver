@@ -1,7 +1,7 @@
 /*------------------------------------------------------------------
  * sprintf_s.h -- Safe Sprintf Interfaces
  *
- * September 2020 Tim Johnston
+ * September 2020 FieldComm Group
  *
  * Copyright (c) FieldComm Group, Inc
  * All rights reserved.

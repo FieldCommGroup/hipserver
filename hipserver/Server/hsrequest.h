@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,18 +64,20 @@ typedef enum
  *  Globals
  ************/
 
+class ICommand;
+
 /************************
  *  Function Prototypes
  ************************/
 
 // add a request to the request table
-request_table_status_t add_request_to_table(int transaction, hsmessage_t *rqst);
+request_table_status_t add_request_to_table(int transaction, ICommand *rqst);
 
 // find a matching PDU, request is returned in result
 // RTS_OK      if matching PDU found
 // RTS_ERROR   if len is insufficient
 // RTS_EOF     if no match is found
-request_table_status_t find_request_in_table(int transaction, hsmessage_t *result /*returned*/);
+request_table_status_t find_request_in_table(int transaction, ICommand **result /*returned*/);
 
 // empty the request_table
 request_table_status_t clear_request_table();

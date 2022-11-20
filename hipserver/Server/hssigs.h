@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ errVal_t  setup_rtsig(int32_t sigNum,
                       sigaction_t *p_newAction,
                       sigaction_t *p_oldAction);
 
-void sighandler_socketInactivity(int32_t sigNum,
+void sighandler_timer(int32_t sigNum,
                       siginfo_t *p_sigInfo,
                       void *p_context);
 

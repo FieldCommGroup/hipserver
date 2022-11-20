@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,7 +148,7 @@ uint8_t get_sem_name(sem_t *p_sem, char *semName)
   {
     if (p_sem == htoolSems[n].p_sem)
     {
-      strcpy(semName, htoolSems[n].semName);
+      strcpy_s(semName, SEM_NAME_SIZE, htoolSems[n].semName);
       found = TRUE;
       break;
     }
@@ -232,7 +232,8 @@ static errVal_t remove_sem(sem_t *p_sem, const char *semName)
 // #191
 void *createUniqueName(char* semName)
 {
-	char tempName[SEM_NAME_SIZE] = "";
-	sprintf(tempName,"%d",getpid());
-	strcat(semName,tempName);
+  char tempName[SEM_NAME_SIZE] = "";
+  sprintf_s(tempName, SEM_NAME_SIZE, "%d",getpid());
+  strcat_s(semName,SEM_NAME_SIZE, tempName);
+  return semName;
 }

@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,8 @@
 #include "hsrequest.h"
 #include "debug.h"
 
+#include "hscommands.h"
+
 /************
  *  Globals
  ************/
@@ -45,7 +47,7 @@
  *  Private variables for this file
  ************************************/
 //std::list<hsmessage_t> request_table;
-std::map<int, hsmessage_t> request_table;
+std::map<int, ICommand*> request_table;
 
 
 /**********************************************
@@ -57,12 +59,11 @@ static int dump_request_table()
 	dbgp_logdbg("request table dump:\n");
 
 	int n = 0;
-	std::map<int, hsmessage_t>::iterator it = request_table.begin();
+	std::map<int, ICommand*>::iterator it = request_table.begin();
 	while (it != request_table.end())
 	{
-		hsmessage_t &rqst = (*it).second;
-		TpPdu reqpdu(rqst.message.hipTPPDU);
-		dbgp_logdbg("request table [0x%08X] = %s\n", (*it).first, reqpdu.ToHex());
+		ICommand* &rqst = (*it).second;
+		dbgp_logdbg("request table [0x%08X] = %s\n", (*it).first, rqst->ToHex());
 		n++;
 		it++;
 	}
@@ -73,14 +74,14 @@ static int dump_request_table()
  *  Public functions for this file
  **********************************************/
 
-request_table_status_t add_request_to_table(int transaction, hsmessage_t *rqst)
+request_table_status_t add_request_to_table(int transaction, ICommand *rqst)
 {
 #if 0
 	TpPdu pdu(rqst->message.hipTPPDU);
 	dbgp_logdbg("Add request to table: %s\n", pdu.ToHex());
 #endif
 
-	request_table[transaction] = *rqst;  // copy new request
+	request_table[transaction] = rqst;  // copy new request
 
 	// purge old records:
 	// remove first record if it is too old to keep in the table
@@ -88,11 +89,11 @@ request_table_status_t add_request_to_table(int transaction, hsmessage_t *rqst)
 	time_t timenow;
 	time(&timenow);
 
-	std::map<int, hsmessage_t>::iterator it = request_table.begin();
+	std::map<int, ICommand*>::iterator it = request_table.begin();
 	while (it != request_table.end())
 	{ // there is a first record
-		hsmessage_t &first_rqst = (*it).second;
-		time_t deltat = timenow - first_rqst.time;
+		ICommand *first_rqst = (*it).second;
+		time_t deltat = timenow - first_rqst->GetTime();
 		if (deltat > MAX_REQUEST_TABLE_AGE)
 		{
 			request_table.erase(it); // remove aged record from table
@@ -103,7 +104,7 @@ request_table_status_t add_request_to_table(int transaction, hsmessage_t *rqst)
 	return RTS_OK;          // request is copied into table
 }
 
-request_table_status_t find_request_in_table(int transaction, hsmessage_t *result /*returned*/)
+request_table_status_t find_request_in_table(int transaction, ICommand **result /*returned*/)
 {
 	request_table_status_t status = RTS_EOF;
 

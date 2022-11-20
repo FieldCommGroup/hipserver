@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +78,8 @@ class TpPdu
     uint8_t *pPDU;
     uint8_t addedByteCount; // number of bytes added to data in response,
                               // not including RC+STATUS bytes
+    uint8_t reqByteCount;
+    uint8_t savedDeviceStatus;
 
   public:
     TpPdu() {};
@@ -109,6 +111,7 @@ class TpPdu
 	uint8_t ResponseByteCount();
 
 	uint16_t CmdNum();     // handles expanded commands
+	uint16_t CmdNum1Byte();      // returns 1 byte command number after the address
 	uint8_t ByteCount();
 	uint8_t ResponseCode();
 	uint8_t DeviceStatus();
@@ -118,6 +121,12 @@ class TpPdu
     void SetRCStatus(uint8_t rc, uint8_t status);
     void SetByteCount(uint8_t bc);
 	void setCommandNumber(uint16_t newCmd);
+	
+	void setReqByteCount(uint8_t src) { reqByteCount = src; }
+	void setSavedDeviceStatus(uint8_t src) { savedDeviceStatus = src; } // #165
+
+	uint8_t getReqByteCount() { return reqByteCount; } // #36
+	uint8_t getSavedDevStatus() { return savedDeviceStatus; } // #165
 
 	bool Matches(TpPdu &other); // address+cmd match - test if response matches request
 
@@ -183,5 +192,44 @@ class TerminateAppPdu : public TpPdu
 	// initialize the PDU from a request message in a buffer
 	TerminateAppPdu(uint8_t *data);
 };
+
+/******************************************
+ ***** Syslog`s constants (From Spec 85) **
+ ******************************************/
+#define SYSLOG_PRIORITY_LEN     2
+#define SYSLOG_STATUS_LEN       2
+#define SYSLOG_TIMESTAMP_LEN    17
+#define SYSLOG_HOSTNAME_LEN     64
+#define SYSLOG_MANUFACTURER_LEN 2
+#define SYSLOG_PRODUCT_LEN      2
+#define SYSLOG_DEV_REV_LEN      1
+#define SYSLOG_EVENT_ID_LEN     2
+#define SYSLOG_DESC_LEN         158
+#define SYSLOG_SEVERITY_LEN     1
+#define SYSLOG_EXTENSION_LEN    4
+
+class SyslogAppPdu : public TpPdu
+{
+	TpPduStore store;
+public:
+	// initialize the PDU from a request message in a buffer
+	SyslogAppPdu(uint8_t *data)
+	:store(data)
+	{};
+
+	unsigned short Priority();
+	unsigned short Status();
+	void GetDate(char* to, int len);
+	void GetHost(char* to, int len);
+	unsigned short Manufacturer();
+	unsigned short ExtendedDeviceType();
+	unsigned char DeviceRevision();
+	unsigned short EventId();
+	void GetDescription(char* to, int len);
+	unsigned char Severity();
+	unsigned int DeviceID();
+
+};
+
 
 #endif /* TPPDU_H_ */

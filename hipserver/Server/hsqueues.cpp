@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
  *
  **********************************************************/
 
-
 #include <assert.h>
 #include <errno.h>
 #include <mqueue.h>
@@ -33,7 +32,7 @@
 #include <string.h>
 #include <time.h>
 #include <signal.h>
-
+#include "hscommands.h"
 #include "debug.h"
 #include "toolsems.h"
 #include "toolutils.h"
@@ -44,6 +43,7 @@
 #include "appmsg.h"
 #include "hsqueues.h"
 #include "hsrequest.h"
+#include "hssettings.h"
 #include "hssems.h"
 #include "hsudp.h"
 #include "hssubscribe.h"
@@ -52,6 +52,8 @@
 #include <string>
 
 #include "safe_lib.h"
+#include "hssyslogger.h"
+#include "hsreadonlycommandsmanager.h"
 
 /************
  *  Globals
@@ -60,21 +62,19 @@
  * and the APP.
  */
 
-static int appRecdMsgCount = 0;    // count of messages received from APP
-static ssize_t numBytesRead;       // for debugging
+static int appRecdMsgCount = 0; // count of messages received from APP
+static ssize_t numBytesRead;    // for debugging
 int connectionType;
 
 /************************************
  *  Private variables for this file
  ************************************/
 
-
 /**********************************************
  *  Private function prototypes for this file
  **********************************************/
 
 static errVal_t handle_msg_from_srvr(uint8_t *p_reqMsg, uint8_t *p_rspMsg);
-
 
 /****************************************************
  *          Private functions for this file
@@ -93,7 +93,7 @@ static errVal_t handle_control_msg_from_app(AppMsg *p_rxMsg)
     {
       errval = POINTER_ERROR;
       print_to_both(p_toolLogPtr,
-          "Null Ptr (req) in handle_token_passing_req()\n");
+                    "Null Ptr (req) in handle_token_passing_req()\n");
       break;
     }
 
@@ -107,11 +107,35 @@ static errVal_t handle_control_msg_from_app(AppMsg *p_rxMsg)
       char cConnectionType[2] = {'\0'};
       const int maxAppNameSize = 100;
       char appName[maxAppNameSize] = {'\0'};
-      cConnectionType[0] = (p_rxMsg->pdu[initPduLength-1]);
-      connectionType = strtol(cConnectionType,NULL,10);
-      memcpy_s(appName, maxAppNameSize, p_rxMsg->pdu, (initPduLength-1));
+      cConnectionType[0] = (p_rxMsg->pdu[initPduLength - 1]);
+      connectionType = strtol(cConnectionType, NULL, 10);
+      memcpy_s(appName, maxAppNameSize, p_rxMsg->pdu, (initPduLength - 1));
       dbgp_log("Connected to: %s\n", appName);
       ++appRecdMsgCount;
+
+      // only run simulated commands if the application is active / ready
+      if (eAppState == APP_READY)
+      {
+        print_to_both(p_toolLogPtr, "Getting long tag and unit tag...\n");
+
+        TPCommand::RunSimulatedCommand20(); //getting long tag
+        TPCommand::RunSimulatedCommand520(); //getting process unit tag
+      }
+      break;
+    }
+    case SYSLogEvent_APP_CMD:
+    {
+      SyslogAppPdu syslogPdu(p_rxMsg->pdu);
+      char szDesc[256] = {0}; 
+      syslogPdu.GetDescription(szDesc, sizeof(szDesc) - 1);
+      char szDate[256] = {0}; 
+      syslogPdu.GetDate(szDate, sizeof(szDate) - 1);
+      char szHost[256] = {0}; 
+      syslogPdu.GetHost(szHost, sizeof(szHost) - 1);
+      log2HipSyslogger(syslogPdu.Priority(), syslogPdu.Status(), szDate, szHost, 
+            syslogPdu.Manufacturer(), syslogPdu.ExtendedDeviceType(), syslogPdu.DeviceRevision(), 
+            syslogPdu.EventId(), szDesc, syslogPdu.Severity(), syslogPdu.DeviceID(), getServerIPv4());
+      errval = NO_ERROR;
       break;
     }
 
@@ -145,7 +169,7 @@ static errVal_t handle_control_msg_from_app(AppMsg *p_rxMsg)
       if (errval == LINUX_ERROR)
       {
         print_to_both(p_toolLogPtr, "System error %d in sem_post()\n",
-            errno);
+                      errno);
       }
 
       break;
@@ -167,12 +191,10 @@ static errVal_t handle_device_msg_from_app(AppMsg *p_rxMsg)
   const char *funcName = "handle_device_msg_from_app";
   dbgp_trace("~~~~~~ %s ~~~~~~\n", funcName);
   appRecdMsgCount++;
-  dbgp_logdbg("\nServer processing msg recd from APP  %6d \n", appRecdMsgCount);
-
-
+  // dbgp_logdbg("\nServer processing msg recd from APP  %6d \n", appRecdMsgCount);
 
   errVal_t errval = NO_ERROR;
-  sem_wait(p_semServerTables);  // lock server tables when available
+  sem_wait(p_semServerTables); // lock server tables when available
   {
     do
     {
@@ -180,30 +202,51 @@ static errVal_t handle_device_msg_from_app(AppMsg *p_rxMsg)
       {
         errval = POINTER_ERROR;
         print_to_both(p_toolLogPtr,
-            "Null Ptr (req) in handle_token_passing_req()\n");
+                      "Null Ptr (req) in handle_token_passing_req()\n");
         break;
       }
 
       TpPdu tppdu(p_rxMsg->pdu);
-      hsmessage_t hsmsg;
-
+      hsmessage_t hsmsg;      
       if (tppdu.IsBACK())
-      { // BACK - distribute response to all subscribed clients
-
+      { // BACK - distribute response to all subscribed clients        
         memcpy_s(hsmsg.message.hipTPPDU, TPPDU_MAX_FRAMELEN, p_rxMsg->pdu,
-            sizeof(hsmsg.message.hipTPPDU));
+                 sizeof(p_rxMsg->pdu));
         hsmsg.message.hipHdr.version = HARTIP_PROTOCOL_VERSION;
         hsmsg.message.hipHdr.status = 0;
         hsmsg.message.hipHdr.msgType = HARTIP_MSG_TYPE_PUBLISH;
         hsmsg.message.hipHdr.msgID = HARTIP_MSG_ID_TP_PDU;
-        hsmsg.message.hipHdr.byteCount = HARTIP_HEADER_LEN
-            + tppdu.PduLength();
+        hsmsg.message.hipHdr.byteCount = HARTIP_HEADER_LEN + tppdu.PduLength();
 
-        send_burst_to_subscribers(&hsmsg.message);  // manages seq#
+        SubscribesTable::Instance()->SendResponse(&hsmsg.message); // manages seq#
       }
       else
-      { // ACK - find the matching request and reply to correct client
-        request_table_status_t status = find_request_in_table(p_rxMsg->transaction, &hsmsg);
+      {
+        if (tppdu.CmdNum() == 0)
+        {
+          uint8_t* pResponse = tppdu.ResponseBytes();
+
+          uint8_t szNewDeviceUniqueId[5];
+          szNewDeviceUniqueId[0] = pResponse[1];
+          szNewDeviceUniqueId[0] &= 0x3f;
+          szNewDeviceUniqueId[1] = pResponse[2];
+          szNewDeviceUniqueId[2] = pResponse[9];
+          szNewDeviceUniqueId[3] = pResponse[10];
+          szNewDeviceUniqueId[4] = pResponse[11];
+
+          bool invalidAddress = !szNewDeviceUniqueId[0] && !szNewDeviceUniqueId[1] && !szNewDeviceUniqueId[2]
+                  && !szNewDeviceUniqueId[3]  && !szNewDeviceUniqueId[4];
+          if (false == invalidAddress)
+          {
+              uint8_t newAppPdu[TPPDU_MAX_FRAMELEN];
+              memset_s(newAppPdu, 0, TPPDU_MAX_FRAMELEN);
+              memcpy_s(newAppPdu + TPHDR_DELIMLEN, TPHDR_ADDRLEN_UNIQ, szNewDeviceUniqueId, TPHDR_ADDRLEN_UNIQ);
+              attach_device_by_address(newAppPdu);
+          }
+        }
+        // ACK - find the matching request and reply to correct client
+        ICommand* command;
+        request_table_status_t status = find_request_in_table(p_rxMsg->transaction, &command);
 
         if (RTS_EOF == status)
         {
@@ -211,25 +254,17 @@ static errVal_t handle_device_msg_from_app(AppMsg *p_rxMsg)
         }
         else
         {
+          if (FALSE == ReadOnlyCommandsManager::Instance().IsCommandReadOnly(tppdu.CmdNum()) && !tppdu.IsErrorResponse())
+          {
+            log2HipSyslogger(109, 2000, 3, NULL, "Configuration Change - HART Command %d", tppdu.CmdNum());
+          }
 
-    	  memcpy_s(hsmsg.message.hipTPPDU, TPPDU_MAX_FRAMELEN, p_rxMsg->pdu, sizeof(hsmsg.message.hipTPPDU));
-          hsmsg.message.hipHdr.version = HARTIP_PROTOCOL_VERSION;
-          hsmsg.message.hipHdr.status = 0;
-          hsmsg.message.hipHdr.msgType = HARTIP_MSG_TYPE_RESPONSE;
-          hsmsg.message.hipHdr.msgID = HARTIP_MSG_ID_TP_PDU;
-          hsmsg.message.hipHdr.byteCount = HARTIP_HEADER_LEN
-              + tppdu.PduLength();
-          // hsmsg.message.hipHdr.seqNum exists already
-
-          /* Build payload of response for client, if not empty */
-          errval = send_rsp_to_client(&hsmsg.message, hsmsg.pSession);
-          /* keep command 0 responses from attached devices */
-          attach_device(hsmsg.message.hipTPPDU);
+          command->SendMessage(tppdu, p_rxMsg->transaction);
         }
       }
     } while (FALSE);
   }
-  sem_post(p_semServerTables);  // unlock server tables when done
+  sem_post(p_semServerTables); // unlock server tables when done
 
   return (errval);
 }
@@ -289,7 +324,7 @@ static void processRxQueue()
       else
       {
         print_to_both(p_toolLogPtr,
-            "Error processing msg received from APP\n");
+                      "Error processing msg received from APP. errVal = %d\n", errval);
       }
 
     } // if (errval == NO_ERROR)
@@ -311,7 +346,7 @@ void *popRxThrFunc(void *thrName)
   {
     processRxQueue();
 
-    usleep(QSLEEP * 1000);      // microseconds
+    usleep(QSLEEP * 1000); // microseconds
 
   } while (TRUE); /* run forever */
 }
@@ -332,7 +367,7 @@ errVal_t snd_msg_to_app(AppMsg *p_txMsg)
     {
       errval = POINTER_ERROR;
       print_to_both(p_toolLogPtr, "NULL pointer passed to %s\n",
-          funcName);
+                    funcName);
       break;
     }
     /* Write data to request queue */
@@ -391,4 +426,3 @@ errVal_t echo_msg_to_srvr(mqd_t mq, void *p_msg)
 {
   return snd_msg_to_Q(mq, (interface_msg_t*) p_msg);
 }
-

@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,10 @@
  * 		for app = TERM_APP_CMD
  * 			transaction contains 0
  * 			message contains: request and reply - empty
+ * 
+ * 		For app = SYSLogEvent_APP_CMD
+ * 			transaction contains SYSLog Server  IP, SYSLog server hostname
+ * 			message contains HART TP BACK delimiter through check byte
  *
  */
 
@@ -45,22 +49,26 @@
 #define HART_APP_CMD	0
 #define INIT_APP_CMD	1
 #define TERM_APP_CMD	2
+#define SYSLogEvent_APP_CMD	3
 
-#define APP_MSG_SIZE	( (2*sizeof(int)) + TPPDU_MAX_FRAMELEN )
+#define APP_MSG_SIZE	( (3*sizeof(int)) + TPPDU_MAX_FRAMELEN )
 
 struct AppMsg
 {
 	int command;						// APP COMMAND NUMBER ie Control command, not hart command#
 	int transaction;					// Transaction ID
+	int isDmMsg; // #62
 	uint8_t pdu[TPPDU_MAX_FRAMELEN];	// HART TP PDU or APP PDU
 
 	// command and transaction need to stay..void clear() { memset( this, 0, APP_MSG_SIZE); };
 	void clear() { memset_s(pdu, TPPDU_MAX_FRAMELEN, 0); };//leave cmd & transaction
 	AppMsg& operator=(const AppMsg &SRC) {command = SRC.command;
-			transaction = SRC.transaction; memcpy_s(&pdu[0],TPPDU_MAX_FRAMELEN, &(SRC.pdu[0]),TPPDU_MAX_FRAMELEN);
+			transaction = SRC.transaction; isDmMsg = SRC.isDmMsg; memcpy_s(&pdu[0],TPPDU_MAX_FRAMELEN, &(SRC.pdu[0]),TPPDU_MAX_FRAMELEN);
 			return *this;   };
 
-	uint8_t *GetPduBuffer()   { return pdu; };
+	uint8_t *GetPduBuffer()   { return pdu; }; // #62
+	uint8_t  getDmFlag() { return isDmMsg; }
+	void	 setDmMsg(int set) { isDmMsg = set; }
 	void     ClearPduBuffer() { memset_s(pdu, sizeof(pdu), 0); };
 	void     CopyPduBuffer(uint8_t *to ) { memcpy_s(to, TPPDU_MAX_FRAMELEN, pdu, sizeof(pdu)); };
 };

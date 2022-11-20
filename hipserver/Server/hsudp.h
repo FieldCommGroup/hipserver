@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,81 +41,130 @@
 #include "datatypes.h"
 #include "errval.h"
 #include "hstypes.h"
+#include "threadex.h"
+#include "hsresponsesender.h"
+#include "hscommandsmanager.h"
+#include "hsconnectionmanager.h"
+#include "hshandlermessages.h"
+#include "hsprocessor.h"
 
-/****************
- *  Definitions
- ****************/
-/* Values from HART-IP Protocol (Spec 85) */
-#define HARTIP_PROTOCOL_VERSION      1
-#define HARTIP_SERVER_PORT           5094
 
-/* Mask to get the message type */
-#define HARTIP_MSG_TYPE_MASK         0x0F
-
-/* Offsets for the fields of a HART-IP message header (derived from
- * header information in Spec 85)
- */
-#define HARTIP_OFFSET_VERSION        0
-#define HARTIP_OFFSET_MSG_TYPE       1
-#define HARTIP_OFFSET_MSG_ID         2
-#define HARTIP_OFFSET_STATUS         3
-#define HARTIP_OFFSET_SEQ_NUM        4
-#define HARTIP_OFFSET_BYTE_COUNT     6
+#include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#include <openssl/opensslv.h>
+#include "mutex2.h"
 
 /* Misc. constants */
-#if 0 // Test 1 first
-#define HARTIP_NUM_SESS_SUPPORTED    HARTIP_MIN_SESS_SUPPORTED - 1
-#else
-#define HARTIP_NUM_SESS_SUPPORTED    3 /* 2 process data clients and an instrument mgt sys  */
-#endif
+#define HARTIP_NUM_SESS_SUPPORTED    20 /* 2 process data clients and an instrument mgt sys  */
 
-#define HARTIP_SESSION_ID_INVALID    0xFF         /* arbitrary */
-#define HARTIP_SESSION_ID_OK         0xF0         /* arbitrary */
-#define HARTIP_SOCKET_FD_INVALID     LINUX_ERROR
 
 /* Inactivity signal - scalable for future multiple sessions by defining
  * the signals as SIGRTMIN+n for session n
  */
 #define SIG_INACTIVITY_TIMER(n)      (SIGRTMIN + (n))
 
-/*************
- *  Typedefs
- *************/
-typedef struct sockaddr_in sockaddr_in_t;
-
-/* Session structure to keep track of clients (for multi-session
- * scalability)
- */
-typedef struct _hartip_session_
-{
-	uint8_t id;
-	uint8_t sessNum;         // uniquely identifies a session with a client
-	int32_t server_sockfd;   // server's socket handle
-	sockaddr_in_t clientAddr;      // client address
-	uint16_t seqNumber;       // current sequence number
-	timer_t idInactTimer;    // the inactivity timer
-	uint32_t msInactTimer;    // timer value
-} hartip_session_t;
-
 /************
  *  Globals
  ************/
 
-// #6003
-extern uint16_t portNum;
-
 /************************
  *  Function Prototypes
  ************************/
-void clear_session_info(uint8_t sessNum);
-void close_socket(void);
-errVal_t create_socket(void);
+//errVal_t create_udp_socket(void);
 //errVal_t  create_sockets(void);
 //void      reset_client_sessions(void);
-errVal_t send_burst_to_client(hartip_msg_t *p_response, int sessnum);
-errVal_t send_rsp_to_client(hartip_msg_t *p_response,
-		hartip_session_t *pSession);
-void *socketThrFunc(void *thrName);
+
+int crypto_THREAD_SETUP(); //InitSSL();
+
+class OneUdpProcessor : public IResponseSender, public HARTIPConnection
+{
+public:
+	OneUdpProcessor(uint8_t v) : IResponseSender(), m_noResponse(FALSE), m_version(v), m_ssl(NULL), m_clientSocket(0) {}
+    virtual ~OneUdpProcessor();
+	virtual errVal_t SendResponse(hartip_msg_t *p_response);
+    virtual errVal_t SendBinaryResponse(void* pData, int size);
+	virtual uint16_t GetSessionNumber();
+    HARTIPConnection *GetSession();
+    void SetNoResponse(const bool_t& noResponse);
+    void SetSSL(SSL* ssl, uint32_t socket);
+    SSL* GetSSL();
+    errVal_t ReadSocket(uint8_t *p_buffer, ssize_t* p_size);
+    int32_t GetSocket();
+
+    virtual int GetSlotNumber();
+    
+    virtual bool_t IsReadOnly();
+private: 
+    bool_t      m_noResponse;
+    uint8_t     m_version;
+    SSL*        m_ssl;
+    uint32_t    m_clientSocket;
+};
+
+class UdpProcessor : public HandlerMessages, public IOwnerSession, public IProcessor
+{
+public:
+    static void Init();
+    static void Cleanup();
+    void CreateUdpServerSocket(int32_t serverSocket, sockaddr_in_t *serverAddress);
+    void InitThreadedObject();
+    errVal_t create_context();
+
+    UdpProcessor(uint16_t port): HandlerMessages(), IProcessor(port), m_currentSession(NULL), m_clients(0), m_is_main_thread(FALSE){}
+	void TerminateSocket();
+
+protected:
+    void Run();
+	void DeleteSession(HARTIPConnection* session);
+
+	virtual IResponseSender* GetCurrentResponse() ;
+
+    virtual HARTIPConnection* GetCurrentSession() ;
+
+    virtual errVal_t RestartTimerCurrentSession() ;
+
+    virtual bool_t GetCurrentSession(sockaddr_in_t& address) ;
+
+    virtual errVal_t InitSession(hartip_msg_t *p_req, hartip_msg_t* p_res, sockaddr_in_t& address) ;
+
+    virtual errVal_t ReadSocket(int32_t socket, uint8_t *p_reqBuff, ssize_t *p_lenPdu,
+        sockaddr_in_t *p_client_sockaddr) ;
+
+    virtual std::vector<int32_t> GetSockets() ;
+
+    virtual void RemoveCurrentSession() ;
+
+    virtual void ProcessInvalidSession() ;
+	
+    virtual void DestroyProcessor();
+
+    virtual uint32_t GetClientCount();
+
+    virtual void Start();
+
+    virtual bool_t IsRunning();
+
+    virtual void ReconfigureServerSocket();
+    
+    virtual void SetMainThread();
+    
+    virtual bool_t IsMainThread();
+    
+    virtual int32_t GetMainSocket();
+    
+    virtual sockaddr_in_t* GetServerAddress() { return &m_server_addr; } ;
+private:
+
+	OneUdpProcessor* 		m_currentSession;
+	int32_t		    m_socket;
+    sockaddr_in_t   m_server_addr;
+    bool_t m_is_main_thread;
+    int32_t m_mainsocket;
+
+    std::vector<OneUdpProcessor*> m_clients;
+    static SSL_CTX* m_ctx;
+};
 
 #endif /* _HSUDP_H */
-

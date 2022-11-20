@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ enum message_type_e
     brst_msg    = 4
 }message_type_t;
 
-/*tim went with the smaller...no use to fight...was:[TPPDU_MAX_FRAMLEN]; */
+/*we went with the smaller...no use to fight...was:[TPPDU_MAX_FRAMLEN]; */
 #define MY_MSG_BUF_LEN	TPPDU_MAX_DATALEN  
 
 typedef

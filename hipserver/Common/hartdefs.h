@@ -1,5 +1,5 @@
 /*************************************************************************************************
- * Copyright 2020 FieldComm Group, Inc.
+ * Copyright 2019-2021 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,7 @@
 /* Misc. Definitions */
 #define HART_CMD_EXP_FLAG  31
 #define HART_INVALID_CMD   5       // Illegal/Reserved
+#define HART_PROCESSUNITTAG_LEN 30
 #define HART_LONGTAG_LEN   32
 #ifndef HART_NAN
 #define HART_NAN           ((float)0x7FA00000)
@@ -79,6 +80,7 @@
 #define RC_DR_DEAD               ((uint8_t)35)
 #define RC_DR_CONFL              ((uint8_t)36)
 #define RC_NOT_IMPLEM            ((uint8_t)64)
+#define RC_LONG_PAR_ERROR        ((uint8_t)136)
 
 #define RC_UNDEFINED           ((uint8_t)255) /* Useful for init/err chking */
 
