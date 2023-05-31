@@ -16,6 +16,7 @@
  *****************************************************************/
 
 #include "hshostnamesystem.h"
+#include "safe_lib.h"
 #include <net/if.h>  
 #include <fstream>
 #include "debug.h"
@@ -26,6 +27,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <spawn.h>
+
+extern bool inhibitHostnameChange; // true will cause the hipserver to change the hostname to the MAC address on first launch
 
 std::string execCommand(const char* cmd) 
 {
@@ -73,20 +76,30 @@ errVal_t updateHostName(std::string& hostname)
 {
     errVal_t result = NO_ERROR;
 
-	printf("Changing server hostname to %s\n", hostname.c_str());
-	int status = sethostname(hostname.c_str(), hostname.length());
+    printf("On first run, update the hostname to the MAC address...\n");
+    const int namesize = 253;
+    char currentHostname[namesize];
+    if (gethostname(currentHostname,sizeof(currentHostname)) == 0)
+    {
+        int indicator;
+        if (inhibitHostnameChange || strcmp_s(currentHostname, namesize, "HARTQA", &indicator) == 0)
+        {
+            printf("Changing hostname %s is inhibited.\n", currentHostname);
+            return result;  // don't change the name
+        }
+    }
 
+	printf("Current hostname is: %s\n", currentHostname);
+	int status = sethostname(hostname.c_str(), hostname.length());
     if (status != 0)
     {
         printf("Error occurred in changing hostname.\n");
-
         result = LINUX_ERROR;
     }
     else
     {
-        char newHostname[253];
+        char newHostname[namesize];
         int rc = gethostname(newHostname,sizeof(newHostname));
-
         printf("Hostname value after changing hostname: %s\n", newHostname);
     }
     
