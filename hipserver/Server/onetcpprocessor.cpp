@@ -30,6 +30,7 @@
 #include "hsauditlog.h"
 #include "hssecurityconfiguration.h"
 #include "hsnetworkmanager.h"
+#include "toolutils.h"
 
 int srp_server_param_cb(SSL *s, int *ad, void *arg);
 unsigned int psk_out_of_bound_serv_cb(SSL *ssl, const char *id, unsigned char *psk, unsigned int max_psk_len);
@@ -495,7 +496,8 @@ HARTIPConnection *OneTcpProcessor::GetSession()
 unsigned int psk_out_of_bound_serv_cb(SSL *ssl, const char *id, unsigned char *psk, unsigned int max_psk_len)
 {
     unsigned int retVal = 0;
-	
+	char *psk_key;
+
     SlotMap& slots = SecurityConfigurationTable::Instance()->Slots();
     SlotMap::iterator itr;
 
@@ -526,9 +528,9 @@ unsigned int psk_out_of_bound_serv_cb(SSL *ssl, const char *id, unsigned char *p
     }
     else
     {
-        memcpy_s(psk, max_psk_len, (unsigned char*)pSlot->m_keyVal.data(), pSlot->m_keyVal.size());
-  print_to_both(p_toolLogPtr, "SSL CTX PSK Identity Hint: %s \n", SSL_get_psk_identity_hint(ssl));
         retVal = pSlot->m_keyVal.size();
+		psk_key = (char *) pSlot->m_keyVal.data();
+		retVal = hex2bin(psk_key,psk); // convert hex string to binary
 		SecurityConfigurationTable::Instance()->AddConnection(ssl, itr->first);
     }
     return retVal;
