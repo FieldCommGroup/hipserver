@@ -243,7 +243,7 @@ errVal_t TPCommand::Execute()
 				{ // these msgs processed by server
 
 					dbgp_intfc("Server received msg from cmdQueue\n");
-
+#ifdef HTS
 					if (commandNumber == 257)
 					{ // #6005
 						process_cmd257();
@@ -255,7 +255,8 @@ errVal_t TPCommand::Execute()
 						SendMessage(m_tppdu, 0);
 						shutdown_server();
 					}
-					else if (commandNumber == 532)
+#endif
+					if (commandNumber == 532)
 					{
 						SubscribesTable::Instance()->HandleCommand532(m_resSender, &m_tppdu);
 						SendMessage(m_tppdu, 0);
@@ -266,7 +267,8 @@ errVal_t TPCommand::Execute()
 						SendMessage(m_tppdu, 0);
 						log2HipSyslogger(134, 1100, 1, NULL, "Client subscribes to to publications from device.");
 					}
-					else if (commandNumber == 543)
+#ifndef HTS
+					if (commandNumber == 543)
 					{
 						process_cmd543();
 						SendMessage(m_tppdu, 0);
@@ -331,6 +333,7 @@ errVal_t TPCommand::Execute()
 						SecurityConfigurationTable::Instance()->ProcessCmd542(&m_tppdu);
 						SendMessage(m_tppdu, 0);
 					}
+#endif					
 					else
 					{
 						print_to_both(p_toolLogPtr,
@@ -339,6 +342,7 @@ errVal_t TPCommand::Execute()
 				}
 				else
 				{
+#ifndef HTS				
 					if(commandNumber == 22)
 					{
 						if(Settings::Instance()->CheckCmd22(&m_tppdu) != NO_ERROR)
@@ -364,7 +368,7 @@ errVal_t TPCommand::Execute()
 							ModifyTag();
 						}
 					}
-
+#endif
 					// add message to request table, used to match responses from a device
 					m_txMsg.transaction = m_transactionNumber;
 					add_request_to_table(m_txMsg.transaction, this);

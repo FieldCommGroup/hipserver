@@ -35,8 +35,8 @@ endif
 
 CC        = g++ -c -std=c++11
 CXX        = g++ -c -std=c++11
-CFLAGS     = -g -DLINUX $(CRYPTO_FLAGS) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
-CXXFLAGS   = -g -DLINUX $(CRYPTO_FLAGS) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
+CFLAGS     = -g -DLINUX -DHTS $(CRYPTO_FLAGS) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
+CXXFLAGS   = -g -DLINUX -DHTS $(CRYPTO_FLAGS) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
 ECHO       = @echo
 INCL_LIBS  = -L/usr/lib $(CRYPTO_INCL) -lpthread -lrt -lssl -lcrypto -ljsoncpp  ../safestringlib/libsafestring.a
 LD         = g++
