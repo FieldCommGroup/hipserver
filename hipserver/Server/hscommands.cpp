@@ -149,15 +149,15 @@ TPCommand::TPCommand(TpPduStore tppdustore, IResponseSender *responseSender, boo
 
 bool_t TPCommand::IsCmdHandledByServer(uint16_t commandNumber)
 {
-				return (commandNumber == 257 ||
-					   commandNumber == 258 ||
-					   /*
+// #1717
+#ifndef HTS
+					/*
 					 *  if APP is an IO system:
 					 *  	pass subscription commands on
 					 *  else
 					 *  	hipserver handles the subscriptions
 					 */
-					   (commandNumber == 532 && connectionType != hipiosys) ||
+				  return   (commandNumber == 532 && connectionType != hipiosys) ||
 					   (commandNumber == 533 && connectionType != hipiosys) ||
 					   commandNumber == 538 ||
 					   commandNumber == 539 ||
@@ -168,9 +168,16 @@ bool_t TPCommand::IsCmdHandledByServer(uint16_t commandNumber)
 					   commandNumber == 544 ||
 					   commandNumber == 545 ||
 					   commandNumber == 546 ||
-					   commandNumber == 547)
+					   commandNumber == 547
+					   
+					   )
 						  ? TRUE
 						  : FALSE;
+#endif
+
+#ifdef HTS
+return (commandNumber == 257 || commandNumber == 258) ? TRUE : FALSE;
+#endif
 }
 
 errVal_t TPCommand::Execute()
@@ -241,7 +248,7 @@ errVal_t TPCommand::Execute()
 
 				if (m_isSrvrCommand)
 				{ // these msgs processed by server
-
+// #1717
 					dbgp_intfc("Server received msg from cmdQueue\n");
 #ifdef HTS
 					if (commandNumber == 257)
