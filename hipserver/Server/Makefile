@@ -1,5 +1,5 @@
-#*************************************************************************************************
-# Copyright 2019-2021 FieldComm Group, Inc.
+#**************************************************************************
+# Copyright 2019-2024 FieldComm Group, Inc.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#********************************************************************
+#**************************************************************************
 
 #**********************************************************
 #*
@@ -33,8 +33,7 @@ DIR_APPC = $(DIR_HSRVR)/AppConnect
 DIR_COMN = $(DIR_HSRVR)/Common
 DIR_RLTM = $(DIR_HSRVR)/Realtime
 DIR_SAFE = $(DIR_HSRVR)/safestringlib
-DIR_SERVER = $(DIR_HSRVR)/Server
-# subdir DIR_SRVR is already defined at top
+# subdir DIR_SRVR ($(DIR_HSRVR)/Server) is already defined at top
 
 # Leave RHS blank if no subdirs to be built
 SUBDIRS_HSRVR = $(DIR_APPC) $(DIR_COMN) $(DIR_RLTM) $(DIR_SRVR) $(DIR_SAFE)
@@ -81,6 +80,14 @@ clean:
 .PHONY: cleanall
 cleanall:
 	@$(MAKE) -s clean
+	$(ECHO)
+
+# This is used by HTS Apps (VG)
+.PHONY: cleanallbutsafestrlib
+cleanallbutsafestrlib:
+	@mv -f $(DIR_SAFE)/libsafestring.a   .  >  /dev/null 2>&1
+	@$(MAKE) -s clean
+	@mv -f libsafestring.a  $(DIR_SAFE)     >  /dev/null 2>&1
 	$(ECHO)
 
 .PHONY: test_basic
