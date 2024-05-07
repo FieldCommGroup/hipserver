@@ -1,5 +1,5 @@
-/*************************************************************************************************
- * Copyright 2019-2021 FieldComm Group, Inc.
+/**************************************************************************
+ * Copyright 2019-2024 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *****************************************************************/
+ **************************************************************************/
 
 /**********************************************************
  *
@@ -23,38 +23,39 @@
  *   File that launches everything required to run the tool.
  *
  **********************************************************/
-#include "debug.h"
 #include <errno.h>
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
+
+#include "datatypes.h"
+#include "debug.h"
+#include "errval.h"
+#include "factory_reset.h"
+#include "hsauditlog.h"
+#include "hsconnectionmanager.h"
+#include "hshostnamesystem.h"
+#include "hsnetworkmanager.h"
+#include "hsreadonlycommandsmanager.h"
+#include "hssems.h"
+#include "hssettingshandler.h"
+#include "hssigs.h"
+#include "hssubscribe.h"
+#include "hssyslogger.h"
+#include "hsthreads.h"
+#include "hsudp.h"
+#include "hsutils.h"
+#include "onetcpprocessor.h"
+#include "safe_lib.h"
+#include "serverstate.h"
+#include "snprintf_s.h"
+#include "tooldef.h"
 #include "toolqueues.h"
 #include "toolsigs.h"
 #include "toolthreads.h"
 #include "toolutils.h"
-#include "datatypes.h"
-#include "errval.h"
-#include "tooldef.h"
-#include "hsthreads.h"
-#include "hsutils.h"
-#include "hsudp.h"
-#include "hssems.h"
-#include "hssigs.h"
-#include "hshostnamesystem.h"
-#include "hsnetworkmanager.h"
-#include "hssubscribe.h"
-#include "hsconnectionmanager.h"
-#include "serverstate.h"
-#include "hsauditlog.h"
-#include "safe_lib.h"
-#include "snprintf_s.h"
-#include "hssyslogger.h"
-#include "hssettingshandler.h"
-#include "onetcpprocessor.h"
-#include "hsreadonlycommandsmanager.h"
-#include "factory_reset.h"
-#include <stdexcept>
 
 enum ServerState eServerState = SRVR_INIT;
 enum AppState eAppState = APP_STOP;
@@ -68,7 +69,13 @@ char AppCommandLine[500] = "";
 uint16_t portNum = HARTIP_SERVER_PORT;
 uint16_t maxSessionNumber = DEFINE_MAX_COUNT_SESSION;
 char     pathToCertificate[255] = "";
-std::string SETTINGS_FOLDER_PATH = "/var/lib/hipServer";
+
+#ifdef HTS  // Users not allowed to write in system space on the HTS (VG)
+  std::string SETTINGS_FOLDER_PATH = "/tmp";
+#else
+  std::string SETTINGS_FOLDER_PATH = "/var/lib/hipServer";
+#endif
+
 std::string SETTINGS_FILE_NAME = "hipServer.conf";
 
 // Set default encryption type to PSK

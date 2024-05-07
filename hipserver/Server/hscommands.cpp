@@ -1,5 +1,5 @@
-/*************************************************************************************************
- * Copyright 2019-2021 FieldComm Group, Inc.
+/**************************************************************************
+ * Copyright 2019-2024 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *****************************************************************/
+ **************************************************************************/
 
 #include "hscommands.h"
 #include "hssems.h"
@@ -469,31 +469,40 @@ errVal_t TPCommand::SendMessage(TpPdu tppdu, int transaction)
 		setDeviceIdentification(manufacture, expandedDeviceType, deviceRevision, deviceID);
 	}
 	
+
+#ifndef HTS   // # CR 1717 VG
 	if(m_tppdu.CmdNum() == 22 && m_tppdu.ResponseCode() == 0)
-    {
-        Settings::Instance()->Process22(&m_tppdu);
-    }
-    if(m_tppdu.CmdNum() == 521 && m_tppdu.ResponseCode() == 0)
-    {
-        Settings::Instance()->Process521(&m_tppdu);
-    }
+        {
+            Settings::Instance()->Process22(&m_tppdu);
+        }
+
+        if(m_tppdu.CmdNum() == 521 && m_tppdu.ResponseCode() == 0)
+        {
+            Settings::Instance()->Process521(&m_tppdu);
+        }
+
 	if(m_tppdu.CmdNum() == 20 && res == NO_ERROR)
 	{
-		Settings::Instance()->SetLongTag(&m_tppdu);
+	    Settings::Instance()->SetLongTag(&m_tppdu);
 	}
 	
 	if(m_tppdu.CmdNum() == 520 && res == NO_ERROR)
 	{
-		Settings::Instance()->SetProcessUnitTag(&m_tppdu);
+	    Settings::Instance()->SetProcessUnitTag(&m_tppdu);
 	}
 	
 	if(res == NO_ERROR && m_resSender != NULL && m_resSender->GetParentSender() == NULL)
 	{
-		AuditLogger->UpdateAckCounter(m_resSender->GetSession());
+	    AuditLogger->UpdateAckCounter(m_resSender->GetSession());
 	}
+
 	if(!m_tppdu.IsLongFrame())
-		attach_device(m_tppdu.GetPdu());
+	{
+	    attach_device(m_tppdu.GetPdu());
+	}
 	m_isProcessed = TRUE;
+#endif
+
 	return res;
 }
 

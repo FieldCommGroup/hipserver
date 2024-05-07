@@ -1,5 +1,5 @@
-/*************************************************************************************************
- * Copyright 2019-2021 FieldComm Group, Inc.
+/**************************************************************************
+ * Copyright 2019-2024 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *****************************************************************/
+ **************************************************************************/
 
 #include "hssettingshandler.h"
 #include "hsnetworkmanager.h"
@@ -118,14 +118,23 @@ errVal_t SettingsHandler::SetDefaultSettings()
         slots.append(slot);
     }
     root["slots"] = slots;
-    system(("mkdir -p " + SETTINGS_FOLDER_PATH).c_str()); // Creating a directory
+
+#ifndef HTS   // Can't create files/directories in system space! (VG)
+    // Creating a directory
+    system(("mkdir -p " + SETTINGS_FOLDER_PATH).c_str());
+#endif
+
     Json::FastWriter writer;
     std::ofstream file;
 
     file.open(m_settingsFilePath);
     if(!file.is_open())
     {
+#ifndef HTS   // # CR 1717 VG
         print_to_both(p_toolLogPtr, "Can not create settings file.\n");
+#else
+        print_to_log(p_toolLogPtr, "Can not create settings file.\n");
+#endif
         return LINUX_ERROR;
     }
 

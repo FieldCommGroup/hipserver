@@ -1,5 +1,5 @@
-/*************************************************************************************************
- * Copyright 2019-2021 FieldComm Group, Inc.
+/**************************************************************************
+ * Copyright 2019-2024 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *****************************************************************/
+ **************************************************************************/
 
 #include "hssettings.h"
 #include "hssettingshandler.h"
@@ -79,7 +79,9 @@ void Settings::SetProcessUnitTag(TpPdu* req)
 
         Settings::Instance()->SetHostName(); //setting hostname
 
+#ifndef HTS   // # CR 1717 VG
         m_isFirstUnitTagSet = true;
+#endif
     }
 }
 
@@ -269,6 +271,10 @@ std::string Settings::GetTag(TpPdu* req)
 
 errVal_t Settings::SetHostName()
 {
+#ifndef HTS   // # CR 1717 VG
+    // The following code does not apply to the HART Test System (HTS)
+    // hipserver must NOT modify hostname on the HTS (VG)
+
     if(m_longTag.empty() && m_processUnitTag.empty())
     {
         print_to_both(p_toolLogPtr, "Unit tag and long tag both empty.\n");
@@ -308,6 +314,8 @@ errVal_t Settings::SetHostName()
             dbgp_log("could not set new hostname\n");
         }
     }
+#endif
+
     return NO_ERROR;
 }
 

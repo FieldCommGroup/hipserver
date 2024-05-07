@@ -1,5 +1,5 @@
-/*************************************************************************************************
- * Copyright 2019-2021 FieldComm Group, Inc.
+/**************************************************************************
+ * Copyright 2019-2024 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *****************************************************************/
+ **************************************************************************/
 
 /**********************************************************
  *
@@ -189,7 +189,12 @@ errVal_t UdpProcessor::ReadSocket(int32_t socket, uint8_t *p_reqBuff, ssize_t *p
         return errval;
 	}
 
+#ifndef HTS   // # CR 1717 VG
     print_to_both(p_toolLogPtr,"\nSIZE = %d", *p_lenPdu);
+#else
+    print_to_log(p_toolLogPtr,"\nSIZE = %d", *p_lenPdu);
+#endif
+
     HARTIPConnection *connection;
 	bool_t isValidSess = m_connectionsManager->IsSessionExisting(*p_client_sockaddr, &connection);
 
@@ -753,7 +758,10 @@ errVal_t OneUdpProcessor::ReadSocket(uint8_t *p_buffer, ssize_t *p_size)
 	else
     {
         *p_size = recvfrom(m_server_sockfd, p_buffer,HARTIP_MAX_PYLD_LEN, 0, (struct sockaddr *) &socketAddr, &socklen);
+
+#ifndef HTS   // # CR 1717 VG
         printf("recv from by oneudpprocie(%d)", *p_size);
+#endif
     }
 
 	if (*p_size == LINUX_ERROR)

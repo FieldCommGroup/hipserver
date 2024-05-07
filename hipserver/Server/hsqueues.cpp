@@ -1,5 +1,5 @@
-/*************************************************************************************************
- * Copyright 2019-2021 FieldComm Group, Inc.
+/**************************************************************************
+ * Copyright 2019-2024 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *****************************************************************/
+ **************************************************************************/
 
 /**********************************************************
  * File Name:
@@ -32,8 +32,8 @@
 #include <string.h>
 #include <time.h>
 #include <signal.h>
-#include "hscommands.h"
 #include "debug.h"
+#include "hscommands.h"
 #include "toolsems.h"
 #include "toolutils.h"
 
@@ -113,14 +113,17 @@ static errVal_t handle_control_msg_from_app(AppMsg *p_rxMsg)
       dbgp_log("Connected to: %s\n", appName);
       ++appRecdMsgCount;
 
+#ifdef HTS   // # CR 1717 VG
+      print_to_both(p_toolLogPtr, "\nHey No Messing With Tags...\n");
+#else
       // only run simulated commands if the application is active / ready
       if (eAppState == APP_READY)
       {
         print_to_both(p_toolLogPtr, "Getting long tag and unit tag...\n");
-
         TPCommand::RunSimulatedCommand20(); //getting long tag
         TPCommand::RunSimulatedCommand520(); //getting process unit tag
       }
+#endif
       break;
     }
     case SYSLogEvent_APP_CMD:
