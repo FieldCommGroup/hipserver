@@ -1,5 +1,5 @@
-/*************************************************************************************************
- * Copyright 2019-2021 FieldComm Group, Inc.
+/**************************************************************************
+ * Copyright 2019-2024 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *****************************************************************/
+ **************************************************************************/
 
 /**********************************************************
  *
@@ -75,7 +75,7 @@ void close_logfile(FILE *p_filePtr)
   }
   else
   {
-    fprintf(stderr, "File was not open\n");
+    fprintf(stderr, "\n");
   }
   fflush(stderr);
 }

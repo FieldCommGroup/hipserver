@@ -1,5 +1,5 @@
-/*************************************************************************************************
- * Copyright 2019-2021 FieldComm Group, Inc.
+/**************************************************************************
+ * Copyright 2019-2024 FieldComm Group, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *****************************************************************/
+ **************************************************************************/
 
 /**********************************************************
  *
@@ -49,17 +49,18 @@ extern FILE *p_toolLogPtr;
 extern "C" {
 #endif
 
-void close_logfile(FILE *p_filePtr);
-void close_toolLog(void);
+void     close_logfile(FILE *p_filePtr);
+void     close_toolLog(void);
+uint32_t GetTickCount(void);
+double   get_elapsed_time(); // secs (decimal) since prog began, usec accuracy
 errVal_t open_logfile(FILE **pp_filePtr, char *p_fileName);
 errVal_t open_toolLog(void);
-void print_hexbytes(uint8_t *bytes, uint8_t numBytes, FILE *p_filePtr);
-void print_to_both(FILE *p_filePtr, const char *format, ...);
-void print_to_log(FILE *p_filePtr, const char *format, ...);
-void script_sleep(uint32_t sec);
-void script_usleep(uint32_t usec);
-double get_elapsed_time();	// decimal seconds since program started, accurate to microsec
-uint32_t GetTickCount(void);
+void     print_hexbytes(uint8_t *bytes, uint8_t numBytes,
+                        FILE *p_filePtr = NULL);
+void     print_to_both(FILE *p_filePtr, const char *format, ...);
+void     print_to_log(FILE *p_filePtr, const char *format, ...);
+void     script_sleep(uint32_t sec);
+void     script_usleep(uint32_t usec);
 
 #ifdef __cplusplus
 }
