@@ -127,7 +127,7 @@ openssl req -x509 -newkey rsa:4096 -keyout myKey.pem -out myCert.pem -days 365
 ```
 
 **Hipserver** will connect to the syslog server when a client send a hostname and a port of the syslog server. Commands 544 and 545 set the hostname and port for the syslog server. In this case, a connection is established between **hipserver** and *syslog server*. This connection will be insecure via UPD. 
-**Hipserver** will attempt to establish a secure connection when a client sets PreSharedKey or PAKE password using commands 546 and 547. If a secure connection could not be established, then **hipserver** will use a insecure connection.
+**Hipserver** will attempt to establish a secure connection when a client sets PreSharedKey or PAKE password using commands 546 and 547. If a secure connection could not be established, then **hipserver** will use a insecure connection. 
 
 For information about commands 544-547 look HCF_SPEC-151 Revision 12.0.
 
