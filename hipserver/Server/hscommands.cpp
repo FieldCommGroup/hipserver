@@ -159,24 +159,22 @@ bool_t TPCommand::IsCmdHandledByServer(uint16_t commandNumber)
 					 */
 				  return   (commandNumber == 532 && connectionType != hipiosys) ||
 					   (commandNumber == 533 && connectionType != hipiosys) ||
-					   commandNumber == 538 ||
-					   commandNumber == 539 ||
-					   commandNumber == 540 ||
-					   commandNumber == 541 ||
-					   commandNumber == 542 ||
-					   commandNumber == 543 ||
-					   commandNumber == 544 ||
-					   commandNumber == 545 ||
-					   commandNumber == 546 ||
-					   commandNumber == 547
-					   
-					   )
+					   (commandNumber == 538 ||
+					    commandNumber == 539 ||
+					    commandNumber == 540 ||
+					    commandNumber == 541 ||
+					    commandNumber == 542 ||
+					    commandNumber == 543 ||
+					    commandNumber == 544 ||
+					    commandNumber == 545 ||
+					    commandNumber == 546 ||
+					    commandNumber == 547)
 						  ? TRUE
 						  : FALSE;
 #endif
-
+// #1717
 #ifdef HTS
-return (commandNumber == 257 || commandNumber == 258) ? TRUE : FALSE;
+return ((commandNumber == 257) || (commandNumber == 258) || (commandNumber == 532 && connectionType != hipiosys) || (commandNumber == 533 && connectionType != hipiosys)) ? TRUE : FALSE;
 #endif
 }
 
