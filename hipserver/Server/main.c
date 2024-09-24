@@ -503,8 +503,9 @@ void app_init(char *appName)
   dbgp_log( "(it may take a few seconds)\n");
   dbgp_log( "************************************************\n");
   dbgp_log( "\n");
-
+#ifndef HTS
   system("dhclient -r;dhclient");
+#endif
   script_sleep(2);
   exit(1);
 }
