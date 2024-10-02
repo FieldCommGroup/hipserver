@@ -113,8 +113,8 @@ static errVal_t handle_control_msg_from_app(AppMsg *p_rxMsg)
       dbgp_log("Connected to: %s\n", appName);
       ++appRecdMsgCount;
 
-#ifdef HTS   // # CR 1717 VG
-      print_to_both(p_toolLogPtr, "\nHey No Messing With Tags...\n");
+#ifdef HTS   // # CR 1696 VG
+      //print_to_both(p_toolLogPtr, "\nHey No Messing With Tags...\n");
 #else
       // only run simulated commands if the application is active / ready
       if (eAppState == APP_READY)

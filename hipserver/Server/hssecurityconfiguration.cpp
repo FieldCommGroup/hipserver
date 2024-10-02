@@ -614,7 +614,7 @@ int SecurityConfigurationTable::GetSlotNumber(SSL* ssl)
 
 void SecurityConfigurationTable::FinishConfigure()
 {
-#ifndef HTS   // # CR 1717 VG
+#ifndef HTS   // # CR 1696 VG
     print_to_both(p_toolLogPtr, "Finish configuration\n");
 #else
     print_to_log(p_toolLogPtr, "Finish configuration\n");

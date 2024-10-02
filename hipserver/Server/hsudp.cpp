@@ -189,7 +189,7 @@ errVal_t UdpProcessor::ReadSocket(int32_t socket, uint8_t *p_reqBuff, ssize_t *p
         return errval;
 	}
 
-#ifndef HTS   // # CR 1717 VG
+#ifndef HTS   // # CR 1696 VG
     print_to_both(p_toolLogPtr,"\nSIZE = %d", *p_lenPdu);
 #else
     print_to_log(p_toolLogPtr,"\nSIZE = %d", *p_lenPdu);
@@ -206,7 +206,9 @@ errVal_t UdpProcessor::ReadSocket(int32_t socket, uint8_t *p_reqBuff, ssize_t *p
     else
     {
         *p_lenPdu = recvfrom(m_socket, p_reqBuff,HARTIP_MAX_PYLD_LEN, 0, (struct sockaddr *) p_client_sockaddr, &socklen);
+#ifndef HTS // # CR 1696
         print_to_both(p_toolLogPtr,"recv from by udp(%d)", *p_lenPdu);
+#endif
     }
 
 	if (*p_lenPdu == LINUX_ERROR)
@@ -759,7 +761,7 @@ errVal_t OneUdpProcessor::ReadSocket(uint8_t *p_buffer, ssize_t *p_size)
     {
         *p_size = recvfrom(m_server_sockfd, p_buffer,HARTIP_MAX_PYLD_LEN, 0, (struct sockaddr *) &socketAddr, &socklen);
 
-#ifndef HTS   // # CR 1717 VG
+#ifndef HTS   // # CR 1696 VG
         printf("recv from by oneudpprocie(%d)", *p_size);
 #endif
     }

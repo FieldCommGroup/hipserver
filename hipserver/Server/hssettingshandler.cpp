@@ -130,7 +130,7 @@ errVal_t SettingsHandler::SetDefaultSettings()
     file.open(m_settingsFilePath);
     if(!file.is_open())
     {
-#ifndef HTS   // # CR 1717 VG
+#ifndef HTS   // # CR 1696 VG
         print_to_both(p_toolLogPtr, "Can not create settings file.\n");
 #else
         print_to_log(p_toolLogPtr, "Can not create settings file.\n");

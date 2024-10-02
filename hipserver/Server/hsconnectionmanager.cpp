@@ -582,9 +582,13 @@ bool_t ConnectionsManager::IsSessionExisting(sockaddr_in_t& client_addr, HARTIPC
 {
     dbgp_logdbg("~~~~~~ %s ~~~~~~\n", __func__);
     bool_t ret = FALSE;
+#ifndef HTS // #1696
     printf("\nsta");
+#endif
     sem_wait(&m_semaphor);
+#ifndef HTS
     printf("rt\n");
+#endif
     for(int i = 0; i < m_connections.size(); i++)
     {
         if(m_connections[i]!= NULL && m_connections[i]->IsSession(client_addr))
