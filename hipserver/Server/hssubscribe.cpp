@@ -506,8 +506,8 @@ bool_t SubscribesTable::IsNeedSend(TpPdu *tppdu, SubscriptionFlags flags)
 {
   const uint16_t command = tppdu->CmdNum();
 
-  // Added command checking for process data subscription flag
-  if(flags.processData == 1 && (command == 1 || command == 2 || command == 3 || command == 9 ))
+  // Added command checking for process data subscription flag #2278
+  if(flags.processData == 1 && (command == 1 || command == 2 || command == 3 || command == 9 || command == 78))
   {
     return TRUE;
   }
