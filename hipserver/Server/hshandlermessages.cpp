@@ -1084,6 +1084,7 @@ errVal_t HandlerMessages::WaitClient(uint8_t *p_reqBuff, ssize_t *p_lenPdu,
 			dbgp_hs("Server got a Client request:\n");
 			dbgp_logdbg("\n-------------------\n");
 			// dbgp_logdbg("Msg recd by Server from Client:\n");
+#ifndef HTS
 			printf("\n");
 			uint16_t i;
 			for (i = 0; i < *p_lenPdu; i++)
@@ -1091,6 +1092,7 @@ errVal_t HandlerMessages::WaitClient(uint8_t *p_reqBuff, ssize_t *p_lenPdu,
 				printf(" %.2X", p_reqBuff[i]);
 			}
 			printf("\n");
+#endif
 			// dbgp_logdbg("-------------------\n");
 
 			break; // how can this run forever with a break? VG
@@ -1159,6 +1161,7 @@ errVal_t HandlerMessages::WaitClientMainThreadUdp(uint8_t *p_reqBuff, ssize_t *p
 			dbgp_hs("Server got a Client request:\n");
 			dbgp_logdbg("\n-------------------\n");
 			// dbgp_logdbg("Msg recd by Server from Client:\n");
+#ifndef HTS
 			printf("\n");
 			uint16_t i;
 			for (i = 0; i < *p_lenPdu; i++)
@@ -1166,6 +1169,7 @@ errVal_t HandlerMessages::WaitClientMainThreadUdp(uint8_t *p_reqBuff, ssize_t *p
 				printf(" %.2X", p_reqBuff[i]);
 			}
 			printf("\n");
+#endif
 			// dbgp_logdbg("-------------------\n");
 
 			break; // how can this run forever with a break? VG

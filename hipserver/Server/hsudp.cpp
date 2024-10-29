@@ -78,7 +78,7 @@ static errVal_t create_udpserver_socket(uint16_t serverPortNum, int32_t *pSocket
 		if (socketFD == LINUX_ERROR)
 		{
 			errval = SOCKET_CREATION_ERROR;
-			print_to_both(p_toolLogPtr, "System Error %d for socket()\n",
+			print_to_log(p_toolLogPtr, "System Error %d for socket()\n",
 			errno);
 			break;
 		}
@@ -94,7 +94,7 @@ static errVal_t create_udpserver_socket(uint16_t serverPortNum, int32_t *pSocket
 		server_addr.sin_family = AF_INET;
 		server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 		server_addr.sin_port = htons(serverPortNum);
-        print_to_both(p_toolLogPtr, "UdpSocket: %d\n", socketFD);
+        print_to_log(p_toolLogPtr, "UdpSocket: %d\n", socketFD);
 		dbgp_logdbg("\nServer Socket using port %d:\n", serverPortNum);
 		print_socket_addr(server_addr);
 
@@ -103,14 +103,14 @@ static errVal_t create_udpserver_socket(uint16_t serverPortNum, int32_t *pSocket
 			if (errno == EINVAL)
 			{
 				errval = SOCKET_PORT_USED_ERROR;
-				print_to_both(p_toolLogPtr,
+				print_to_log(p_toolLogPtr,
 						"System Error %d for socket bind()\n", errno);
 				break;
 			}
 			else
 			{
 				errval = SOCKET_BIND_ERROR;
-				print_to_both(p_toolLogPtr,
+				print_to_log(p_toolLogPtr,
 						"System Error %d for socket bind()\n", errno);
 				break;
 			}
@@ -185,12 +185,12 @@ errVal_t UdpProcessor::ReadSocket(int32_t socket, uint8_t *p_reqBuff, ssize_t *p
     if (*p_lenPdu == LINUX_ERROR)
 	{
 		errval = SOCKET_RECVFROM_ERROR;
-		print_to_both(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
+		print_to_log(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
         return errval;
 	}
 
 #ifndef HTS   // # CR 1696 VG
-    print_to_both(p_toolLogPtr,"\nSIZE = %d", *p_lenPdu);
+    print_to_log(p_toolLogPtr,"\nSIZE = %d", *p_lenPdu);
 #else
     print_to_log(p_toolLogPtr,"\nSIZE = %d", *p_lenPdu);
 #endif
@@ -207,14 +207,14 @@ errVal_t UdpProcessor::ReadSocket(int32_t socket, uint8_t *p_reqBuff, ssize_t *p
     {
         *p_lenPdu = recvfrom(m_socket, p_reqBuff,HARTIP_MAX_PYLD_LEN, 0, (struct sockaddr *) p_client_sockaddr, &socklen);
 #ifndef HTS // # CR 1696
-        print_to_both(p_toolLogPtr,"recv from by udp(%d)", *p_lenPdu);
+        print_to_log(p_toolLogPtr,"recv from by udp(%d)", *p_lenPdu);
 #endif
     }
 
 	if (*p_lenPdu == LINUX_ERROR)
 	{
 		errval = SOCKET_RECVFROM_ERROR;
-		print_to_both(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
+		print_to_log(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
 	}
     
 	return errval;
@@ -326,7 +326,7 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
 	// Evaluate client version here (2 or greater to go secure)
 	if (errval == NO_ERROR && m_currentSession != NULL && m_version >= MinimalSecureClientVersion)
 	{
-        print_to_both(p_toolLogPtr, "Will be accepted DTLS connection\n");
+        print_to_log(p_toolLogPtr, "Will be accepted DTLS connection\n");
 
         SSL *ssl = SSL_new(m_ctx);
         BIO* bio = BIO_new_dgram(m_socket, BIO_NOCLOSE);
@@ -342,7 +342,7 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
         uint32_t client_sockfd = socket(client_addr.sin_family, SOCK_DGRAM, 0);
         if (client_sockfd < 0)
         {
-            print_to_both(p_toolLogPtr, "Error in socket(client)\n");
+            print_to_log(p_toolLogPtr, "Error in socket(client)\n");
             RemoveCurrentSession();
             errval = SOCKET_CREATION_ERROR;
             return errval;
@@ -354,7 +354,7 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
         int fcntErr = fcntl(client_sockfd, F_SETFL, flags & ~O_NONBLOCK);
         if (fcntErr < 0)
         {
-            print_to_both(p_toolLogPtr, "Error failed to set blocking socket.\n");
+            print_to_log(p_toolLogPtr, "Error failed to set blocking socket.\n");
             RemoveCurrentSession();
             errval = PARAM_ERROR;
             return errval;
@@ -368,7 +368,7 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
         int bindErr = bind(client_sockfd, (const struct sockaddr*)&m_server_addr, sizeof(struct sockaddr_in));
         if (bindErr == LINUX_ERROR)
         {
-            print_to_both(p_toolLogPtr, "Error bind(client)\n");
+            print_to_log(p_toolLogPtr, "Error bind(client)\n");
             RemoveCurrentSession();
             errval = SOCKET_BIND_ERROR;
             return errval;
@@ -376,7 +376,7 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
 
         while (connect(client_sockfd, (struct sockaddr*)&client_addr, sizeof(struct sockaddr_in)))
         {
-            print_to_both(p_toolLogPtr, "Error connect(client\n");
+            print_to_log(p_toolLogPtr, "Error connect(client\n");
             RemoveCurrentSession();
             errval = LINUX_ERROR;
             return errval;
@@ -386,7 +386,7 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
         BIO_set_fd(SSL_get_rbio(ssl), client_sockfd, BIO_NOCLOSE);
         BIO_ctrl(SSL_get_rbio(ssl), BIO_CTRL_DGRAM_SET_CONNECTED, 0, &client_addr);
 
-        print_to_both(p_toolLogPtr, "Will be accepted handshake of DTLS connection\n");
+        print_to_log(p_toolLogPtr, "Will be accepted handshake of DTLS connection\n");
         // make handshake
         bool fatalError = false;
         int ret;
@@ -403,7 +403,7 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
 
                 default:
                 {
-                    print_to_both(p_toolLogPtr, "SSL Accept failed. Code: %d\n", error_recv);
+                    print_to_log(p_toolLogPtr, "SSL Accept failed. Code: %d\n", error_recv);
                     fatalError = true;
                     break;
                 }
@@ -416,14 +416,14 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
             SSL_free(ssl);
             ssl = NULL;
 
-            print_to_both(p_toolLogPtr, "SSL Accept failed\n");
+            print_to_log(p_toolLogPtr, "SSL Accept failed\n");
             RemoveCurrentSession();
             errval = VALIDATION_ERROR;
             newSender = NULL;
         }
         else
         {
-            print_to_both(p_toolLogPtr, "Negotiated Cipher Suite Used:%s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
+            print_to_log(p_toolLogPtr, "Negotiated Cipher Suite Used:%s\n", SSL_CIPHER_get_name(SSL_get_current_cipher(ssl)));
             
             //AuditLogger->SetStatusSession(newSender, InsecureSession);
             m_currentSession->SetSSL(ssl, client_sockfd);
@@ -437,12 +437,12 @@ errVal_t UdpProcessor::InitSession(hartip_msg_t* p_req, hartip_msg_t* p_res, soc
     else if (m_version < MinimalSecureClientVersion)
     {
     
-    	print_to_both(p_toolLogPtr, "Warning - UDP is using non-secure connection \n");
+    	print_to_log(p_toolLogPtr, "Warning - UDP is using non-secure connection \n");
     	
 
     	if (newSender != NULL)
     	{
-    		print_to_both(p_toolLogPtr, "UDP Client Address: %s \n", newSender->GetSessionInfoString());
+    		print_to_log(p_toolLogPtr, "UDP Client Address: %s \n", newSender->GetSessionInfoString());
     		
 			m_clients.push_back(newSender);
 			Settings::Instance()->SetLockedHipVersion(m_version);
@@ -501,7 +501,7 @@ void UdpProcessor::ProcessInvalidSession()
 
 void UdpProcessor::DestroyProcessor()
 {
-    print_to_both(p_toolLogPtr, "Destroying UDP Processor \n");
+    print_to_log(p_toolLogPtr, "Destroying UDP Processor \n");
 
 	Stop();
 	//Join(); commenting out Join as this is making the hipserver freeze when issueing command 539 because of DTLS/UDP threading changes.
@@ -638,7 +638,7 @@ errVal_t OneUdpProcessor::SendResponse(hartip_msg_t* p_response)
                     default:
                     {
                         errval = SOCKET_SENDTO_ERROR;
-                        print_to_both(p_toolLogPtr, "System Error %d for SSL_write()\n", errno);
+                        print_to_log(p_toolLogPtr, "System Error %d for SSL_write()\n", errno);
                         break;
                     }
                 }
@@ -653,7 +653,7 @@ errVal_t OneUdpProcessor::SendResponse(hartip_msg_t* p_response)
 		{
 			AuditLogger->SetStatusSession(this, WritesOccured);
 			errval = SOCKET_SENDTO_ERROR;
-			print_to_both(p_toolLogPtr, "System Error %d for socket sendto()\n",
+			print_to_log(p_toolLogPtr, "System Error %d for socket sendto()\n",
 			errno);
 			break;
 		}
@@ -673,7 +673,7 @@ OneUdpProcessor::~OneUdpProcessor()
         int ret = 0;
         close(m_clientSocket);
         while ((ret = SSL_shutdown(m_ssl)) == 0);
-        print_to_both(p_toolLogPtr, "SSL_shutdown_finish: %d\n", ret);
+        print_to_log(p_toolLogPtr, "SSL_shutdown_finish: %d\n", ret);
         SSL_free(m_ssl);
 
         m_ssl = NULL;
@@ -769,7 +769,7 @@ errVal_t OneUdpProcessor::ReadSocket(uint8_t *p_buffer, ssize_t *p_size)
 	if (*p_size == LINUX_ERROR)
 	{
 		errval = SOCKET_RECVFROM_ERROR;
-		print_to_both(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
+		print_to_log(p_toolLogPtr,"System Error %d for socket recvfrom()\n", errno);
 	}
 	sem_post(&m_sem);
 
@@ -802,7 +802,7 @@ void UdpProcessor::Init()
     int ret = SSL_CTX_set_min_proto_version(m_ctx, DTLS1_2_VERSION);
     if (ret != 1)
     {
-        print_to_both(p_toolLogPtr, "Set min proto version DTSL1_2_VERSION failed.\n");
+        print_to_log(p_toolLogPtr, "Set min proto version DTSL1_2_VERSION failed.\n");
     }
     SSL_CTX_set_session_cache_mode(m_ctx, SSL_SESS_CACHE_OFF);
 	
@@ -829,7 +829,7 @@ m_ctx = SSL_CTX_new(DTLS_server_method());
     int ret = SSL_CTX_set_min_proto_version(m_ctx, DTLS1_2_VERSION);
     if (ret != 1)
     {
-        print_to_both(p_toolLogPtr, "Set min proto version DTSL1_2_VERSION failed.\n");
+        print_to_log(p_toolLogPtr, "Set min proto version DTSL1_2_VERSION failed.\n");
     }
     SSL_CTX_set_session_cache_mode(m_ctx, SSL_SESS_CACHE_OFF);
 	
@@ -877,7 +877,7 @@ int generate_cookie(SSL* ssl, unsigned char* cookie, unsigned int* cookie_len)
     {
         if (!RAND_bytes(cookie_secret, COOKIE_SECRET_LENGTH))
         {
-            print_to_both(p_toolLogPtr, "Random secret creation failed.\n");
+            print_to_log(p_toolLogPtr, "Random secret creation failed.\n");
             retVal = 0;
         }
         else
@@ -900,7 +900,7 @@ int generate_cookie(SSL* ssl, unsigned char* cookie, unsigned int* cookie_len)
 
         if (buffer == NULL)
         {
-            print_to_both(p_toolLogPtr, "random buffer creation failed. OPENSSL allocation error\n");
+            print_to_log(p_toolLogPtr, "random buffer creation failed. OPENSSL allocation error\n");
             retVal = 0;
         }
         else
@@ -935,7 +935,7 @@ int verify_cookie(SSL* ssl, const unsigned char* cookie, unsigned int cookie_len
     /* If secret isn't initialized yet, the cookie can't be valid */
     if (!cookie_initialized)
     {
-        print_to_both(p_toolLogPtr, "Cookie not initialized.\n");
+        print_to_log(p_toolLogPtr, "Cookie not initialized.\n");
         retVal = 0;
     }
     else
@@ -952,7 +952,7 @@ int verify_cookie(SSL* ssl, const unsigned char* cookie, unsigned int cookie_len
 
         if (buffer == NULL)
         {
-            print_to_both(p_toolLogPtr, "random buffer creation failed. OPENSSL allocation error\n");
+            print_to_log(p_toolLogPtr, "random buffer creation failed. OPENSSL allocation error\n");
             retVal = 0;
         }
         else
@@ -972,12 +972,12 @@ int verify_cookie(SSL* ssl, const unsigned char* cookie, unsigned int cookie_len
             if (!cookieCheck)
             {
                 retVal = 1;
-                print_to_both(p_toolLogPtr, "Cookie check OK.\n");
+                print_to_log(p_toolLogPtr, "Cookie check OK.\n");
             }
             else
             {
                 retVal = 0;
-                print_to_both(p_toolLogPtr, "Cookie check fail.\n");
+                print_to_log(p_toolLogPtr, "Cookie check fail.\n");
             }
         }
     }

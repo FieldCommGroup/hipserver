@@ -236,7 +236,9 @@ ConnectionsManager::ConnectionsManager(int maxCount): m_MaxCountClient(maxCount)
 
 void ConnectionsManager::RemoveConnectionFromManager(HARTIPConnection *pConnection)
 {
+#ifndef HTS
     printf("~~~~~~ %s ~~~~~~\n", __func__);
+#endif
 	dbgp_logdbg("~~~~~~ %s ~~~~~~\n", __func__);
     sem_wait(&m_semaphor);
     {
@@ -402,11 +404,11 @@ errVal_t ConnectionsManager::InitSession(hartip_msg_t *p_request,
 						| (p_request->hipTPPDU[3] << 8)
 						| (p_request->hipTPPDU[4]);
             
-            print_to_both(p_toolLogPtr, "\n Client version: %d \n", p_reqHdr->version);
-            print_to_both(p_toolLogPtr, "\n Server version: %d \n", Settings::Instance()->GetLockedHipVersion());
-            print_to_both(p_toolLogPtr, "\n Configuration Status: %d \n", SecurityConfigurationTable::Instance()->IsConfigured());
-            print_to_both(p_toolLogPtr, "\n Session Count: %d \n", m_countSession);
-            print_to_both(p_toolLogPtr, "\n Keep Alive Timer: %d \n", msTimer);
+            print_to_log(p_toolLogPtr, "\n Client version: %d \n", p_reqHdr->version);
+            print_to_log(p_toolLogPtr, "\n Server version: %d \n", Settings::Instance()->GetLockedHipVersion());
+            print_to_log(p_toolLogPtr, "\n Configuration Status: %d \n", SecurityConfigurationTable::Instance()->IsConfigured());
+            print_to_log(p_toolLogPtr, "\n Session Count: %d \n", m_countSession);
+            print_to_log(p_toolLogPtr, "\n Keep Alive Timer: %d \n", msTimer);
 
             /* Check that first session is secure session and configuration is finished.*/
             // if initial session was via v2 client but credentials NOT written. then all subsequent v2 session-initiate responses answered with "Security not initialized. Factory reset required". session not opened. v1 session initiates are ignored.
@@ -564,7 +566,9 @@ errVal_t ConnectionsManager::InitSession(hartip_msg_t *p_request,
                 m_connections[thisSess] = connection;
 
                 m_clientVersion = p_reqHdr->version;
+#ifndef HTS
                 printf("Client Version: %d\n", m_clientVersion);
+#endif
 
                 dbgp_logdbg("\nClient '%s' connected(timeout=%d)\nClient count: %d\n", connection->GetSessionInfoString(), msTimer, ++m_countSession);
                 log2HipSyslogger(118, 1000, 1, connection, "Session initiated. %s", connection->GetSessionInfoString());
