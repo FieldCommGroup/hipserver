@@ -172,10 +172,9 @@ void NetworkManager::AddAdditionalProcessor(IProcessor* processor, TypeConnectio
     else if(type == UDP)
     {
         m_additionalUdpProcessors.push_back(processor);
-    }
-    print_to_both(p_toolLogPtr,"Port added: %d\n", processor->GetPort());
-    print_to_both(p_toolLogPtr,
-              "Add - TCP Processor Count: %d, UDP Processor Count: %d\n",
+    } // #1696
+    print_to_log(p_toolLogPtr,"Port added: %d\n", processor->GetPort());
+    print_to_log(p_toolLogPtr,"Add - TCP Processor Count: %d, UDP Processor Count: %d\n",
               m_additionalTcpProcessors.size(), m_additionalUdpProcessors.size());
 }
 
@@ -236,9 +235,8 @@ void NetworkManager::AddActiveConnection(uint16_t connectedPort, TypeConnection 
     {
         m_activeUdpConnections.push_back(connectedPort);
     }
-
-    print_to_both(p_toolLogPtr,
-              "Add - TCP Connection Count: %d, UDP Connection Count: %d\n",
+    // #1696
+    print_to_log(p_toolLogPtr,"Add - TCP Connection Count: %d, UDP Connection Count: %d\n",
               m_activeTcpConnections.size(), m_activeUdpConnections.size());
 }
 
@@ -268,9 +266,8 @@ void NetworkManager::RemoveActiveConnection(uint16_t connectedPort, TypeConnecti
     }
 
     RemoveInactiveProcessors();
-
-    print_to_both(p_toolLogPtr,
-              "Remove - TCP Connection Count: %d, UDP Connection Count: %d\n",
+    // #1696
+    print_to_log(p_toolLogPtr,"Remove - TCP Connection Count: %d, UDP Connection Count: %d\n",
               m_activeTcpConnections.size(), m_activeUdpConnections.size());
 }
 

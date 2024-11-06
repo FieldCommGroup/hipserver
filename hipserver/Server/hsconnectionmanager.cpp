@@ -246,8 +246,8 @@ void ConnectionsManager::RemoveConnectionFromManager(HARTIPConnection *pConnecti
         {
             if(pConnection == m_connections[i] && pConnection != NULL)
             {
-                m_countSession = m_countSession == 0 ? m_countSession : --m_countSession;
-                dbgp_log("\nClient '%s' disconected\nClient count: %d\n", pConnection->GetSessionInfoString(), m_countSession);
+                m_countSession = m_countSession == 0 ? m_countSession : --m_countSession; // #1696
+                print_to_log(p_toolLogPtr,"\nClient '%s' disconected\nClient count: %d\n", pConnection->GetSessionInfoString(), m_countSession);
                 log2HipSyslogger(118, 1001, 1, pConnection, "Client '%s' disconected", pConnection->GetSessionInfoString());
                 AuditLogger->SessionDisconnected(pConnection);
                 m_connections[i] = NULL;
@@ -262,7 +262,9 @@ void ConnectionsManager::RemoveConnectionFromManager(HARTIPConnection *pConnecti
 
 void ConnectionsManager::RemoveInactivitySession(int sessNumber)
 {
-    printf("\n~~~~~~ %s ~~~~~~\n", __func__);
+ 	// #1696
+    print_to_log(p_toolLogPtr,"\n~~~~~~ %s ~~~~~~\n", __func__);
+
     sem_wait(&m_semaphor);
     {
         if (sessNumber >= m_connections.size())
@@ -273,7 +275,7 @@ void ConnectionsManager::RemoveInactivitySession(int sessNumber)
         if(m_mapSessionOwner[sessNumber] != NULL)
         {
             m_countSession = m_countSession == 0 ? m_countSession : --m_countSession;
-            dbgp_log("\nClient '%s' disconected\nClient count: %d\n", m_connections[sessNumber]->GetSessionInfoString(), m_countSession);
+            print_to_log(p_toolLogPtr,"\nClient '%s' disconected\nClient count: %d\n", m_connections[sessNumber]->GetSessionInfoString(), m_countSession);
             log2HipSyslogger(118, 1003, 1, m_connections[sessNumber], "Session %s inactivity timeout", m_connections[sessNumber]->GetSessionInfoString());
             m_mapSessionOwner[sessNumber]->DeleteSession(m_connections[sessNumber]);
             AuditLogger->SetStatusSession(m_connections[sessNumber], SessionTimeout);
@@ -303,7 +305,9 @@ ConnectionsManager::~ConnectionsManager()
 
 bool_t ConnectionsManager::IsAvailableSession(int& session)
 {
-    printf("\n~~~~~~ %s ~~~~~~\n", __func__);
+ 	// #1696
+    print_to_log(p_toolLogPtr,"\n~~~~~~ %s ~~~~~~\n", __func__);
+
     bool_t result = FALSE;
     for(int i = 0; i < m_connections.size(); ++i)
     {
@@ -330,7 +334,8 @@ bool_t ConnectionsManager::IsAvailableSession(int& session)
 errVal_t ConnectionsManager::InitSession(hartip_msg_t *p_request,
 		hartip_msg_t *p_response, sockaddr_in_t client_addr, HARTIPConnection* connection, IOwnerSession* owner, TypeConnection type, bool_t& noResponse, uint16_t serverPortNumber)
 {
-    printf("\n~~~~~~ %s ~~~~~~\n", __func__);
+ 	// #1696
+    print_to_log(p_toolLogPtr,"\n~~~~~~ %s ~~~~~~\n", __func__);
 
 
     errVal_t errval = NO_ERROR;

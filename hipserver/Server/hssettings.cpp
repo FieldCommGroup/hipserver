@@ -31,11 +31,11 @@ Settings::~Settings(){}
 
 void Settings::SetLockedHipVersion(int version)
 {
-    print_to_both(p_toolLogPtr, "Setting hipserver version to %d\n", version);
-
+    print_to_log(p_toolLogPtr, "Setting hipserver version to %d\n", version);
+    // #1696
     if (m_version != 0 || version == 0)
     {
-        print_to_both(p_toolLogPtr, "HART-IP Server Version is already configured to %d\n", m_version);
+        print_to_log(p_toolLogPtr, "HART-IP Server Version is already configured to %d\n", m_version);
         return;
     }
 
