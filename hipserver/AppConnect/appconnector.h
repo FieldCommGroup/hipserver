@@ -212,6 +212,16 @@ AppConnector<PDU_CLASS>::AppConnector()
    * any error in this constructor is fatal and causes immediate exit
    */
   errVal_t errval = NO_ERROR;
+  // #2346
+  struct sigaction sa;
+  // Clear the structure to avoid undefined behavior
+  memset(&sa, 0, sizeof(sa));
+
+  // Set the handler function
+  sa.sa_handler = abort_handler;
+
+  // Set flags (e.g., no flags)
+  sa.sa_flags = 0;
 
   do
   {
@@ -222,8 +232,8 @@ AppConnector<PDU_CLASS>::AppConnector()
   //  { INIT_DEVTYPE_HI, INIT_DEVTYPE_LO, INIT_DEV_ID };    // TODO
     pPdu->setLong(tLn);  // set long address to null value
 
-
-    if (signal(SIGUSR2, abort_handler) == SIG_ERR)
+    // Register signal handler using sigaction
+    if (sigaction(SIGINT, &sa, NULL) == -1)
     {
     errval = LINUX_ERROR;
     dbgp_logdbg("\nCan't catch SIGUSR2 signal\n");
