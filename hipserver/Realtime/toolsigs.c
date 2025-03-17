@@ -61,8 +61,12 @@ static void sighandler_gensigs(int32_t sigNum);
 errVal_t block_signals()
 {
 	errVal_t errval = NO_ERROR;
-     // Block all signals
+        // Block all signals
 	errval = (errVal_t) (sigprocmask(SIG_BLOCK, &all_signals, &oldSet) < 0);
+
+	// Remove SIGINT from the set of signals to be blocked
+        sigdelset(&all_signals, SIGINT);
+
 	if (errval == LINUX_ERROR)
 	{
           perror("sigprocmask");
@@ -73,7 +77,7 @@ errVal_t block_signals()
 errVal_t unblock_signals()
 {
 	errVal_t errval = NO_ERROR;
-     // Unblock all signals
+        // Unblock all signals
 	errval = (errVal_t) (sigprocmask(SIG_SETMASK, &oldSet, NULL) < 0);
 	if (errval == LINUX_ERROR)
         {
