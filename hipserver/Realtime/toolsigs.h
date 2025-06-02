@@ -47,7 +47,7 @@ typedef struct sigaction sigaction_t;
  ************/
 extern bool_t ifEndApp;
 extern sigaction_t newAction, oldAction;
-extern sigset_t newSet, oldSet, all_signals;
+extern sigset_t newSet, oldSet;
 
 /************************
  *  Function Prototypes
@@ -58,8 +58,6 @@ extern "C" {
 errVal_t initialize_signals(void (*p_endAll)(int32_t));
 errVal_t setup_sig(int32_t sigNum, void (*p_sighandler)(int32_t),
 		sigaction_t *p_newAction, sigaction_t *p_oldAction);
-errVal_t block_signals();
-errVal_t unblock_signals();
 #ifdef __cplusplus
 }
 #endif

@@ -43,7 +43,7 @@ bool_t ifEndApp = FALSE; /* For terminating application on interrupt */
  *  Private variables for this file  
  ************************************/
 sigaction_t newAction, oldAction;
-sigset_t newSet, oldSet, all_signals;
+sigset_t newSet, oldSet;
 
 /**********************************************
  *  Private function prototypes for this file
@@ -58,34 +58,6 @@ static void sighandler_gensigs(int32_t sigNum);
 /*****************************
  *  Function Implementations
  *****************************/
-errVal_t block_signals()
-{
-	errVal_t errval = NO_ERROR;
-        // Block all signals
-	errval = (errVal_t) (sigprocmask(SIG_BLOCK, &all_signals, &oldSet) < 0);
-
-	// Remove SIGINT from the set of signals to be blocked
-        sigdelset(&all_signals, SIGINT);
-
-	if (errval == LINUX_ERROR)
-	{
-          perror("sigprocmask");
-          return (errval);
-        }
-}
-
-errVal_t unblock_signals()
-{
-	errVal_t errval = NO_ERROR;
-        // Unblock all signals
-	errval = (errVal_t) (sigprocmask(SIG_SETMASK, &oldSet, NULL) < 0);
-	if (errval == LINUX_ERROR)
-        {
-          perror("sigprocmask");
-          return (errval);
-        }
-}
-
 errVal_t initialize_signals(void (*p_endAll)(int32_t))
 {
 	errVal_t errval;
@@ -104,14 +76,6 @@ errVal_t initialize_signals(void (*p_endAll)(int32_t))
 		if (errval == LINUX_ERROR)
 		{
 			print_to_both(p_toolLogPtr, "Error %d in sigemptyset()\n", errno);
-			break;
-		}
-
-	    // Initialize the signal set to include all signals
-		errval = (errVal_t) sigfillset(&all_signals);
-		if (errval == LINUX_ERROR)
-		{
-			print_to_both(p_toolLogPtr, "System error %d in sigfillset()\n", errno);
 			break;
 		}
 
