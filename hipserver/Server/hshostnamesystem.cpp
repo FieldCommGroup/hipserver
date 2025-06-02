@@ -27,7 +27,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <spawn.h>
-#include <string.h>
 
 extern bool inhibitHostnameChange; // true will cause the hipserver to change the hostname to the MAC address on first launch
 
@@ -109,21 +108,7 @@ errVal_t updateHostName(std::string& hostname)
 
 errVal_t setNewHostName(std::string& hostname)
 {
-    struct sigaction sa;
-
-    // Clear the structure to avoid undefined behavior
-    memset(&sa, 0, sizeof(sa));
-
-    // Set the handler function
-    sa.sa_handler = SIG_DFL;
-
-    // Optionally, set the signal mask (if needed)
-    // sa.sa_mask = ...; // you can set additional signal blocking here if desired
-
-    // Set flags (e.g., no flags)
-    sa.sa_flags = 0;
-
-    sigaction(SIGCHLD, &sa, NULL);
+    signal(SIGCHLD, SIG_DFL);
 
     errVal_t res = NO_ERROR;
 	//use alternate hostname update call - hostnamectl set-hostname
