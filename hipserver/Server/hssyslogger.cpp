@@ -257,8 +257,9 @@ void setPortToHipSyslogger(int port)
 void setHostnameToHipSyslogger(const char* host)
 {
     {
+    	int size = 0;
         MutexScopeLock(g_connectionToSyslog.m_mutex);
-        if(strcmp(g_connectionToSyslog.m_hostname.c_str(), host) == 0)
+        if(strcmp_s(g_connectionToSyslog.m_hostname.c_str(), g_connectionToSyslog.m_hostname.size() ,host, &size) == 0)
         {
             return;
         }
@@ -276,7 +277,8 @@ void setPreSharedKeyToHipSyslogger(const char* keyValue)
 #ifdef OPEN_SSL_SUPPORT
         unsigned char psk[256];
         std::string psks = keyValue;
-        if(strcmp(g_connectionToSyslog.m_PreSharedKey.c_str(), keyValue)==0)
+        int size = 0;
+        if(strcmp_s(g_connectionToSyslog.m_PreSharedKey.c_str(),g_connectionToSyslog.m_PreSharedKey.size(), keyValue, &size)==0)
         {
             return;
         }
@@ -303,8 +305,8 @@ void setPasswordToHipSyslogger(const char* keyValue)
 {
     {
         MutexScopeLock lock(g_connectionToSyslog.m_mutex);
-
-        if(strcmp(g_connectionToSyslog.m_Password.c_str(), keyValue) == 0)
+        int size = 0;
+        if(strcmp_s(g_connectionToSyslog.m_Password.c_str(), g_connectionToSyslog.m_Password.size(), keyValue, &size) == 0)
         {
             return;
         }

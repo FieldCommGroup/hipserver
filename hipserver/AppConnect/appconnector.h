@@ -215,7 +215,7 @@ AppConnector<PDU_CLASS>::AppConnector()
   // #2346
   struct sigaction sa;
   // Clear the structure to avoid undefined behavior
-  memset(&sa, 0, sizeof(sa));
+  memset_s(&sa, sizeof(sa), 0);
 
   // Set the handler function
   sa.sa_handler = abort_handler;

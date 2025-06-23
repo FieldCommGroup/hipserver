@@ -112,7 +112,7 @@ errVal_t setNewHostName(std::string& hostname)
     struct sigaction sa;
 
     // Clear the structure to avoid undefined behavior
-    memset(&sa, 0, sizeof(sa));
+    memset_s(&sa, sizeof(sa), 0);
 
     // Set the handler function
     sa.sa_handler = SIG_DFL;
