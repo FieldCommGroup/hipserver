@@ -28,7 +28,7 @@
 
 #define HIP_VERS        "2.0"    /* Current version of HART-IP */
 #define TOOL_NAME      "hipserver"   /* The HART-IP server interface */
-#define TOOL_VERS      "3.9"
+#define TOOL_VERS      "4.0"
 
 #endif /* _TOOLDEF_H */
 
