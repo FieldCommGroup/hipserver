@@ -202,7 +202,9 @@ StatisticSession* AuditLog::FindRecord(HARTIPConnection* session)
     std::map<HARTIPConnection*, StatisticSession*>::iterator finded = m_mapActiveSessions.find(session);
     if(finded == m_mapActiveSessions.end())
     {
-        dbgp_log("Didn't found active session");
+#ifndef HTS  // #1717
+        dbgp_log("Didn't find active session");
+#endif
         return NULL;
         
     }
