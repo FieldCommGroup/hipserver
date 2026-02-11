@@ -74,6 +74,8 @@ std::string SETTINGS_FILE_NAME = "hipServer.conf";
 // Set default encryption type to PSK
 uint8_t clientEncryptionType = HARTIP_ENCRYPTION_TYPE_PSK;
 
+bool inhibitHostnameChange = false; // inhibit changing the hostname to the MAC address on first launch
+
 /*****************************
  *  Function Implementations
  *****************************/
@@ -87,6 +89,7 @@ void print_help()
   printf(" -h Print command usage information and quit.\n");
   printf(" -v Print version number and quit.\n");
   printf(" -c Maximum count of client.\n");
+  printf(" -s Use this as a Linux service (not as a native HART-IP device). \n");
 #ifdef OPEN_SSL_SUPPORT
   printf(" -C Path to tls certificate file.\n");
 #endif
@@ -172,6 +175,11 @@ uint8_t process_command_line(int argc, char* argv[])
 
       continue;
     }
+
+      if (argcmp(argv[i], "-s") == 0)
+      {
+        inhibitHostnameChange = false; // for HART Test System
+      }
 
     if (argcmp(argv[i], "-p") == 0)
     {
