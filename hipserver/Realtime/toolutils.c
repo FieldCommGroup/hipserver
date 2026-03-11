@@ -158,6 +158,34 @@ errVal_t open_toolLog(void)
   return (errval);
 }
 
+static inline int cval(char c)
+{
+	if (c >= 'a') return c-'a'+0x0a;
+	if (c >= 'A') return c-'A'+0x0a;
+	return c -'0';
+}
+
+static bool isHexDigit(char c) 
+{
+  if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) 
+  {
+      return true;
+  }
+  return false;
+}
+
+/* return value: number of bytes in out, <=0 if error */
+int hex2bin(char *str, uint8_t *out)
+{
+	int i;
+	for (i = 0; str[i] && str[i+1]; i+=2) 
+  {
+    if (!isHexDigit(str[i])&& !isHexDigit(str[i+1]))
+      return -1;
+    out[i/2] = (cval(str[i])<<4) + cval(str[i+1]);
+	}
+	return i/2;
+}
 
 void print_hexbytes(uint8_t *bytes, uint8_t numBytes, FILE *fptr)
 {
