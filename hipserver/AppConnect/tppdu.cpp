@@ -433,6 +433,13 @@ void TpPdu::ProcessOkResponse(uint8_t rc, uint8_t bc)
   index += TPHDR_BCOUNTLEN;
   rspBuff[index++] = rc;
   rspBuff[index++] = getSavedDevStatus(); // #165
+  if(IsExpCmd())
+  { // #889
+	  // if this is an expanded cmd, then we need to copy the 16-bit cmd # from the request to the response
+	  int ind16BitCmd = (IsLongFrame() ? TP_OFFSET_CMD_UNIQ : TP_OFFSET_CMD_POLL) + 2;
+	  rspBuff[index++] = pPDU[ind16BitCmd];
+	  rspBuff[index++] = pPDU[ind16BitCmd + 1];
+  }
 
   // copy all data bytes, including exp cmd #
   memcpy_s(&rspBuff[index], TPPDU_MAX_DATALEN, DataBytes(), rspLen);
@@ -490,9 +497,10 @@ uint8_t TpPdu::CheckSum(uint8_t *p, uint8_t plen)
 }
 
 void TpPdu::SetCheckSum()
-{
-	int len = PduLength();
-	pPDU[len + 1] = CheckSum(pPDU, len);
+{ // #889
+	int len = ByteCount();
+	uint8_t sum = CheckSum(pPDU, len);
+	pPDU[len + 1] = sum;
 }
 
 
