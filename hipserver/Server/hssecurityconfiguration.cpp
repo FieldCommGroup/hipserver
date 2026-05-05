@@ -39,6 +39,7 @@
 #define RC_CHANGE_FAILED         ((uint8_t)65)
 #define RC_INVALID_CLIENT_ID     ((uint8_t)66)
 #define RC_CLIENT_ID_TOO_SHORT   ((uint8_t)67)
+#define RC_INVALID_KEY           ((uint8_t)68)  // #2927
 
 enum SecurityOptionFlag
 {
@@ -434,15 +435,7 @@ void SecurityConfigurationTable::ProcessCmd542(TpPdu* req)
         req->ProcessErrResponse(RC_INVALID_CLIENT_ID);
         return;
     }
-
-    bool_t uniqueId = CheckDuplicateClientId(cliCom.m_clientIdentifier, slotNum);
-
-    if (!uniqueId)
-    {
-        req->ProcessErrResponse(RC_DUPE_CLIENT_ID);
-        return;
-    }
-
+    // #2927
     //check key value is null filled
 	const int keyPosEnd = 68;
     const int keyPosBegin = 3;
@@ -501,6 +494,35 @@ void SecurityConfigurationTable::ProcessCmd542(TpPdu* req)
     if (crc != sendedCrc)
     {
         req->ProcessErrResponse(RC_CHANGE_FAILED);
+        return;
+    }
+
+    // #2927
+    // CAL541 r3 / Cmd 542: "Cannot reuse any factory default credentials".
+    // Reject if the supplied Client Identifier equals the factory-default
+    // identity ("HART-IPClient"), or if the supplied key value (the 16-byte
+    // key, excluding the trailing 2-byte CRC) equals the factory-default
+    // Both cases must respond with RC=68
+    // ("Invalid Key").
+    if (cliCom.m_clientIdentifier == c_defaultIdentity)
+    {
+        req->ProcessErrResponse(RC_INVALID_KEY);
+        return;
+    }
+    if (cliCom.m_keyVal.size() >= c_defaultKey.size() + CRC_LENGTH &&
+        std::equal(c_defaultKey.begin(), c_defaultKey.end(), cliCom.m_keyVal.begin()))
+    {
+        req->ProcessErrResponse(RC_INVALID_KEY);
+        return;
+    }
+
+    // Duplicate-CID check must come AFTER the factory-default checks so that
+    // re-using the factory-default key with a CID that happens to already be
+    // provisioned still surfaces the spec-mandated RC=68 ("Invalid Key").
+    bool_t uniqueId = CheckDuplicateClientId(cliCom.m_clientIdentifier, slotNum);
+    if (!uniqueId)
+    {
+        req->ProcessErrResponse(RC_DUPE_CLIENT_ID);
         return;
     }
 
