@@ -497,10 +497,11 @@ uint8_t TpPdu::CheckSum(uint8_t *p, uint8_t plen)
 }
 
 void TpPdu::SetCheckSum()
-{ // #889
-	int len = ByteCount();
-	uint8_t sum = CheckSum(pPDU, len);
-	pPDU[len + 1] = sum;
+{ // #889 fix: use TotalLength() so checksum is placed at the correct frame position.
+  // Using ByteCount() caused pPDU[ByteCount()+1] to overwrite the BC field for short
+  // responses (e.g. cmd544 BC=6 -> pPDU[7] = BC field corrupted with checksum value).
+	int len = TotalLength();
+	pPDU[len] = CheckSum(pPDU, len);
 }
 
 
