@@ -549,7 +549,7 @@ void connect2HipSyslogger()
             socket_fd = LINUX_ERROR;
         }
 #endif
-        port = DEFAULT_INSECURE_PORT;
+        port = g_connectionToSyslog.m_port;  // use the configured syslog port (set by Cmd544)
         socket_fd = connectToServer(g_connectionToSyslog.m_hostname.c_str(), port, &g_connectionToSyslog.m_addres, IPPROTO_UDP, SOCK_DGRAM);
 #ifdef OPEN_SSL_SUPPORT 
     }
