@@ -253,6 +253,7 @@ errVal_t UdpProcessor::RestartTimerCurrentSession()
 	{
 		m_currentSession->StartTimer();
 	}
+	return NO_ERROR;
 }
 bool_t UdpProcessor::GetCurrentSession(sockaddr_in_t& address)
 {

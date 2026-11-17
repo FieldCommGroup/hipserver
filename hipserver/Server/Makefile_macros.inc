@@ -35,8 +35,15 @@ endif
 
 CC        = g++ -c -std=c++11
 CXX        = g++ -c -std=c++11
-CFLAGS     = -g -DLINUX $(CRYPTO_FLAGS) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
-CXXFLAGS   = -g -DLINUX $(CRYPTO_FLAGS) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
+# Warnings that catch the defect classes found in the 2026 review: a non-void function that falls off its
+# end, an assignment used as a condition, and use of an uninitialized variable.
+# To make a missing return fail the build once the tree is clean:  make EXTRA_WARN=-Werror=return-type
+# Test build with sanitizers:  make SANITIZE="-fsanitize=address,undefined -fno-omit-frame-pointer"
+WARN_FLAGS = -Wreturn-type -Wparentheses -Wuninitialized
+EXTRA_WARN =
+SANITIZE   =
+CFLAGS     = -g -DLINUX $(CRYPTO_FLAGS) $(WARN_FLAGS) $(EXTRA_WARN) $(SANITIZE) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
+CXXFLAGS   = -g -DLINUX $(CRYPTO_FLAGS) $(WARN_FLAGS) $(EXTRA_WARN) $(SANITIZE) -I. -I../Common  -I../Realtime  -I../AppConnect  -I../safestringlib/include
 ECHO       = @echo
 INCL_LIBS  = -L/usr/lib $(CRYPTO_INCL) -lpthread -lrt -lssl -lcrypto -ljsoncpp  ../safestringlib/libsafestring.a
 LD         = g++

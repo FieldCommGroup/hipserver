@@ -335,6 +335,7 @@ errVal_t SubscribesTable::SendResponse(hartip_msg_t *p_response)
       AuditLogger->UpdateBackCounter(m_subscribersTable[i].sender->GetSession());
     }
   }
+  return NO_ERROR;
 }
 
 subscription_table_status_t SubscribesTable::HandleCommand532(IResponseSender* sender, TpPdu* tppdu)
@@ -394,6 +395,7 @@ subscription_table_status_t SubscribesTable::HandleCommand532(IResponseSender* s
   }
   findme.SetRCStatus(findme.ResponseCode(), tppdu->getSavedDevStatus()); // #165
   findme.InsertCheckSum();
+  return STS_OK;
 }
 
 subscription_table_status_t SubscribesTable::HandleCommand533(IResponseSender *sender, TpPdu *tppdu)

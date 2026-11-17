@@ -303,6 +303,7 @@ errVal_t OneTcpProcessor::RestartTimerCurrentSession()
 	{
 		StartTimer();
 	}
+	return NO_ERROR;
 }
 bool_t OneTcpProcessor::GetCurrentSession(sockaddr_in_t& address)
 {
