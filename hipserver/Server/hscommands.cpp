@@ -53,7 +53,7 @@ int process_cmd258(hsmessage_t *hsmsg);
 int process_cmd257(hsmessage_t *hsmsg);
 
 ICommand::ICommand(IResponseSender *responseSender, uint16_t seqNumber, bool_t noMessResponse) : m_resSender(responseSender), m_seqNumber(seqNumber), m_noMessResponse(noMessResponse),
-																		  m_isProcessed(FALSE), m_isResponse(FALSE), m_isGood(TRUE), m_isSecurityCommand(FALSE), m_isReadOnlyCommand(FALSE) {}
+																		  m_isProcessed(FALSE), m_isResponse(FALSE), m_isGood(TRUE), m_isValid(FALSE), m_isAL(FALSE), m_isSecurityCommand(FALSE), m_isReadOnlyCommand(FALSE) {}
 time_t ICommand::GetTime() { return m_time; }
 bool_t ICommand::IsResponse() { return m_isResponse; }
 bool_t ICommand::IsGood() { return m_isGood; }
@@ -86,7 +86,7 @@ ICommand *ICommand::ParseMessage(hartip_msg_t *request, IResponseSender *sender,
 uint32_t TPCommand::s_currentTransaction = 1;
 
 TPCommand::TPCommand(uint8_t *data, uint16_t byteCount, uint16_t seqNumber, IResponseSender *responseSender, bool_t noMessResponse) : ICommand(responseSender, seqNumber, noMessResponse),
-																						   m_tppduStore(data), m_tppdu(m_tppduStore)
+																						   m_tppduStore(data), m_tppdu(m_tppduStore), isDM(FALSE)
 {
 	//check minimal TPPDU size
 	if(byteCount < cMinimumTPPDULengthShortFrame)
@@ -132,7 +132,7 @@ TPCommand::TPCommand(uint8_t *data, uint16_t byteCount, uint16_t seqNumber, IRes
 }
 
 TPCommand::TPCommand(TpPduStore tppdustore, IResponseSender *responseSender, bool_t noMessResponse) : ICommand(responseSender, -1, noMessResponse),
-																			   m_tppduStore(tppdustore), m_tppdu(m_tppduStore)
+																			   m_tppduStore(tppdustore), m_tppdu(m_tppduStore), isDM(FALSE)
 {
 	uint16_t commandNumber = m_tppdu.CmdNum();
 	m_isSrvrCommand = IsCmdHandledByServer(commandNumber);
@@ -788,7 +788,7 @@ void TPCommand::SetTpPdu(TpPdu tppdu)
 
 void TPCommand::RunSimulatedCommand20()
 {
-    uint8_t buf[TPPDU_MAX_DATALEN] = {0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00};
+    uint8_t buf[TPPDU_MAX_FRAMELEN] = {0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00};
     TpPdu tppdu(buf);
 
     tppdu.SetByteCount(9);
@@ -805,7 +805,7 @@ void TPCommand::RunSimulatedCommand20()
 
 void TPCommand::RunSimulatedCommand520()
 {
-    uint8_t buf[TPPDU_MAX_DATALEN] = {0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x02, 0x02, 0x08};
+    uint8_t buf[TPPDU_MAX_FRAMELEN] = {0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x02, 0x02, 0x08};
     TpPdu tppdu(buf);
 
     tppdu.SetByteCount(9);
@@ -912,7 +912,7 @@ TpPduStore ToTpPduAck(uint8_t *data)
 		offsetData += 2;
 	}
 
-	uint8_t buf[TPPDU_MAX_DATALEN] = {TPDELIM_FRAME_STX, 0, commandNumberData, byteCommand};
+	uint8_t buf[TPPDU_MAX_FRAMELEN] = {TPDELIM_FRAME_STX, 0, commandNumberData, byteCommand}; // TpPduStore copies a full frame
 	uint8_t *dataPointer = data + COMMAND_NUMBER_LENGTH + COMMAND_BYTE_LENGTH;
 	memcpy_s(buf + offsetData, TPPDU_MAX_DATALEN - offsetData, dataPointer, data[COMMAND_NUMBER_LENGTH]);
 
@@ -1113,7 +1113,7 @@ uint16_t DMCommands::GetSessionNumber()
 
 TPCommand *DMCommands::CreateCommand48()
 {
-	uint8_t buf[TPPDU_MAX_DATALEN] = {TPDELIM_FRAME_STX, /*PollingAddress*/ 0, COMMAND_48, COMMAND_48_BYTE_COUNT, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	uint8_t buf[TPPDU_MAX_FRAMELEN] = {TPDELIM_FRAME_STX, /*PollingAddress*/ 0, COMMAND_48, COMMAND_48_BYTE_COUNT, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // TpPduStore copies a full frame
 	TpPdu tppdu(buf);
 	tppdu.SetCheckSum();
 	TPCommand *command = new TPCommand(TpPduStore(tppdu.GetPdu()), this, m_noMessResponse);
