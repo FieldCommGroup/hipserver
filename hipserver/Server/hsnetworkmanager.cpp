@@ -223,6 +223,8 @@ errVal_t NetworkManager::CreateNewProcessor(uint16_t port, TypeConnection type)
             return CreateNewProcessor(port, type, &m_additionalTcpProcessor);
         }
     }
+
+    return PARAM_ERROR;
 }
 
 void NetworkManager::AddActiveConnection(uint16_t connectedPort, TypeConnection type)

@@ -414,6 +414,7 @@ void *mainThrFunc(void *thrName)
   dbgp_log("Quitting %s now!\n", TOOL_NAME);
   script_sleep(2);
   sem_post(p_semEndAll);
+  return NULL;
 }
 
 void app_init(char *appName)

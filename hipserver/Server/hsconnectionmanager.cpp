@@ -193,7 +193,9 @@ bool_t HARTIPConnection::IsReadOnly()
 
 int HARTIPConnection::GetSlotNumber()
 {
-    0;
+    // Both concrete connections override this. Slot 0 is the administrator slot, so a base
+    // implementation that is ever reached must not claim it.
+    return -1;
 }
 
 ConnectionsManager* ConnectionsManager::g_manager = NULL;

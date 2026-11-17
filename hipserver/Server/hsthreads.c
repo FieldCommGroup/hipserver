@@ -80,6 +80,7 @@ void *appThrFunc(void *thrName)
 	{
 		dbgp_logdbg("APP termination.  Command line was: %s\n", AppCommandLine);
 	}
+	return NULL;
 }
 
 

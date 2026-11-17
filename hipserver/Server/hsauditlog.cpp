@@ -105,6 +105,7 @@ errVal_t UpdaterEndConfigurationCounter::SendMessage(TpPdu tppdu, int transactio
     m_message5Reqests.clear();
 
     m_isProcessing = FALSE;
+    return NO_ERROR;
 }
 
 void UpdaterEndConfigurationCounter::AddMessage5Requst(hartip_msg_t& request, IResponseSender* sender)
@@ -529,6 +530,7 @@ errVal_t AuditLog::StartTimer(bool_t isOn)
     }
 
 	timer_settime(*m_idTimer, 0, &its, NULL);
+	return NO_ERROR;
 }
 
 void AuditLog::Handle1200Event()

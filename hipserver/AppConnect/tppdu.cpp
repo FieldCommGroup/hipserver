@@ -625,7 +625,7 @@ InitAppPdu:: InitAppPdu()
 	pPDU = store.Store();	// set pointer to data storage
 
 	// INIT message request = 82, long address 0, command 1, no data, check byte
-	uint8_t buf[TPPDU_MAX_DATALEN] = { 0x82, 0, 0, 0, 0, 0, 1, 0, 0 };
+	uint8_t buf[TPPDU_MAX_FRAMELEN] = { 0x82, 0, 0, 0, 0, 0, 1, 0, 0 };
 	int len = PduLength();
 	buf[len - 1] = CheckSum(buf, len);
 
@@ -669,7 +669,7 @@ TerminateAppPdu::TerminateAppPdu()
 	addedByteCount = 0;
 
 	// INIT message request = 82, long address 0, command 2, no data, check byte
-	uint8_t buf[TPPDU_MAX_DATALEN] = { 0x82, 0, 0, 0, 0, 0, 2, 0, 0 };
+	uint8_t buf[TPPDU_MAX_FRAMELEN] = { 0x82, 0, 0, 0, 0, 0, 2, 0, 0 };
 	buf[PduLength() - 1] = CheckSum(buf, PduLength());
 
 	store.SetStore(buf);	// copy buf into store
