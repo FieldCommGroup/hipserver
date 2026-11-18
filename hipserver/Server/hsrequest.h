@@ -79,6 +79,9 @@ request_table_status_t add_request_to_table(int transaction, ICommand *rqst);
 // RTS_EOF     if no match is found
 request_table_status_t find_request_in_table(int transaction, ICommand **result /*returned*/);
 
+// remove every entry that refers to this command; call before deleting the command
+request_table_status_t remove_command_from_table(ICommand *rqst);
+
 // empty the request_table
 request_table_status_t clear_request_table();
 

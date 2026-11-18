@@ -16,6 +16,7 @@
  *****************************************************************/
 
 #include "hscommandsmanager.h"
+#include "hsrequest.h"
 
 #define START_COMMANDS_COUNT 8
 
@@ -31,6 +32,7 @@ CommandsManager::~CommandsManager()
 {
     for(size_t i = 0; i < m_listCommands.size(); ++i )
     {
+        remove_command_from_table(m_listCommands[i]);
         delete m_listCommands[i];
     }
 }
@@ -56,6 +58,7 @@ void CommandsManager::RemoveProcessedCommands()
         {
             m_listCommands.erase(iter);
 
+            remove_command_from_table(command);
             delete command;
         }
         else
@@ -76,6 +79,7 @@ void CommandsManager::RemoveCommandsBySender(IResponseSender* pSender)
         {
             m_listCommands.erase(iter);
 
+            remove_command_from_table(command);
             delete command;
         }
         else
