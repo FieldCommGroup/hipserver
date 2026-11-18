@@ -104,7 +104,6 @@ void OneTcpProcessor::Run()
         SSL_shutdown(m_ssl);
         SSL_free(m_ssl);
         m_ssl = NULL;
-		close(m_server_sockfd);
     }
 
 	DeleteTimer();
@@ -113,6 +112,14 @@ void OneTcpProcessor::Run()
 	{
 	 m_connectionsManager->RemoveConnectionFromManager(this);
 	 SubscribesTable::Instance()->RemoveSubscriber(this);
+	}
+
+	// Close the accepted socket on every exit path (plain TCP and TLS); done after
+	// the session was removed from the managers so no other thread still uses it.
+	if (m_server_sockfd >= 0)
+	{
+		close(m_server_sockfd);
+		m_server_sockfd = -1;
 	}
 	printf("session closed with %s", inet_ntoa(m_clientAddr.sin_addr));
 	if(m_needRemove)
