@@ -1079,10 +1079,14 @@ DMCommands::~DMCommands()
 {
 	for (size_t i = 0; i < m_listCommands.size(); ++i)
 	{
+		remove_command_from_table(m_listCommands[i]);
 		delete m_listCommands[i];
 	}
 	if (m_command48 != NULL)
+	{
+		remove_command_from_table(m_command48);
 		delete m_command48;
+	}
 }
 
 errVal_t DMCommands::SendBinaryResponse(void* pData, int size)

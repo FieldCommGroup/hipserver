@@ -129,6 +129,13 @@ void TcpProcessor::Run()
                     int new_sd = accept(m_socket, (struct sockaddr*)&address, &len);
                     if (new_sd < 0)
                     {
+                        if (errno == EMFILE || errno == ENFILE)
+                        {
+                            // out of descriptors: keep listening and retry once sessions have closed
+                            perror("  accept() failed");
+                            sleep(1);
+                            continue;
+                        }
                         if (errno != EWOULDBLOCK)
                         {
                             perror("  accept() failed");
